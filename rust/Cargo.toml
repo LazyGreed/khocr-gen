@@ -1,0 +1,30 @@
+[package]
+name = "khocr-gen-core"
+version = "0.1.0"
+edition = "2021"
+description = "Rust acceleration backend for khocr-gen — OCR training data generator"
+
+[lib]
+name = "_rust_accel"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.24", features = ["extension-module", "abi3-py312"] }
+numpy = "0.24"
+rand = "0.8"
+rand_distr = "0.4"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+fontdue = "0.9"
+ttf-parser = "0.25"
+rayon = "1.10"
+memchr = "2.7"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+opt-level = 1

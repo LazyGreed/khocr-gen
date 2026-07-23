@@ -1,0 +1,145 @@
+# Rendering
+height: 48
+# width: null           # omit for variable width
+color-mode: 1           # 1 = grayscale, 3 = RGB
+fonts: fonts/
+font-mode: random
+copies: 3
+mixed-font-prob: 0.0
+retry-limit: 10
+random-align-when-padded: false
+
+# Corpus
+corpus: corpus/corpus.txt
+min-length: 1
+max-length: 260
+lines: 0                # 0 = all
+val-percent: 10.0
+seed: 42
+
+# Output
+output: data/
+append: false
+overwrite: false
+vocab: ""               # auto-derived
+skip-vocab: false
+output-format: jpg      # png | jpg | tiff
+jpeg-quality: 90        # JPEG quality for jpg output
+storage: raw            # raw | lmdb | both
+
+# Workers
+workers: 0              # 0 = auto
+worker-timeout: 300
+
+# DPI
+dpi-mode: native
+
+# Text normalization
+norm_unicode_norm: ""   # skipped by default; khmernormalizer normalizes internally
+norm_emoji_replacement: ""
+norm_url_replacement: ""
+norm_no_remove_zwsp: false
+norm_no_fix_encoding: false
+norm_no_uncurl_quotes: false
+norm_no_fix_line_breaks: false
+norm_passthrough: false
+
+# Augmentation methods (flat keys: <name>-prob, <name>-min, <name>-max)
+# From all methods with prob > 0, one is chosen per image proportional to prob.
+
+sauvola-prob: 0.2
+sauvola-min: 0.1
+sauvola-max: 0.9
+
+geo-warp-prob: 0.2
+geo-warp-min: 0.1
+geo-warp-max: 0.9
+
+vertical-crop-prob: 0.0
+vertical-crop-min: 0.1
+vertical-crop-max: 0.9
+
+blur-prob: 0.4
+blur-min: 0.1
+blur-max: 0.9
+
+distortion-prob: 0.3
+distortion-min: 0.1
+distortion-max: 0.9
+
+albu-noise-prob: 0.4
+albu-noise-min: 0.1
+albu-noise-max: 0.9
+
+jpeg-compression-prob: 0.4
+jpeg-compression-min: 0.1
+jpeg-compression-max: 0.9
+
+rotation-prob: 0.0
+rotation-min: 0.1
+rotation-max: 0.9
+
+salt-pepper-prob: 0.15
+salt-pepper-min: 0.1
+salt-pepper-max: 0.9
+
+background-texture-prob: 0.35
+background-texture-min: 0.1
+background-texture-max: 0.9
+
+lowdpi-prob: 0.0
+lowdpi-min: 0.1
+lowdpi-max: 0.9
+
+oversample-prob: 0.0
+oversample-min: 0.1
+oversample-max: 0.9
+
+# Online augmentations (default disabled)
+perspective-prob: 0.0
+perspective-min: 0.1
+perspective-max: 0.9
+
+elastic-prob: 0.0
+elastic-min: 0.1
+elastic-max: 0.9
+
+random-crop-prob: 0.0
+random-crop-min: 0.1
+random-crop-max: 0.9
+
+online-blur-prob: 0.0
+online-blur-min: 0.1
+online-blur-max: 0.9
+
+online-noise-prob: 0.0
+online-noise-min: 0.1
+online-noise-max: 0.9
+
+hsv-prob: 0.0
+hsv-min: 0.1
+hsv-max: 0.9
+
+reverse-prob: 0.0
+reverse-min: 0.0
+reverse-max: 1.0
+
+brightness-contrast-prob: 0.0
+brightness-contrast-min: 0.1
+brightness-contrast-max: 0.9
+
+pixelation-prob: 0.0
+pixelation-min: 0.1
+pixelation-max: 0.9
+
+gradient-illumination-prob: 0.0
+gradient-illumination-min: 0.1
+gradient-illumination-max: 0.9
+
+morphological-prob: 0.0
+morphological-min: 0.1
+morphological-max: 0.9
+
+anisotropic-dilation-prob: 0.0
+anisotropic-dilation-min: 0.1
+anisotropic-dilation-max: 0.9

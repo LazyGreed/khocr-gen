@@ -1,0 +1,124 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "khocr-gen"
+version = "0.1.0"
+description = "Synthetic OCR training data generator for mixed Khmer/English text"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [
+    { name = "Kosal Seng" },
+]
+keywords = [
+    "ocr",
+    "khmer",
+    "synthetic-data",
+    "text-recognition",
+    "data-generation",
+    "image-generation",
+    "deep-learning",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Text Processing :: Fonts",
+]
+
+dependencies = [
+    "opencv-python-headless>=4.8.0",
+    "numpy>=1.24.0",
+    "pillow>=10.0.0",
+    "albumentations>=1.3.0",
+    "tqdm>=4.64.0",
+    "khmernormalizer>=0.0.4",
+    "pyyaml>=6.0",
+    "lmdb>=1.4.0",
+]
+
+[project.optional-dependencies]
+rust = [
+    "khocr-gen-core",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1.0",
+    "khocr-gen-core",
+]
+
+[tool.uv.sources]
+khocr-gen-core = { path = "rust", editable = true }
+
+[project.scripts]
+khocr-gen = "khocr_gen.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/LazyGreed/khocr-gen"
+Repository = "https://github.com/LazyGreed/khocr-gen"
+Issues = "https://github.com/LazyGreed/khocr-gen/issues"
+Changelog = "https://github.com/LazyGreed/khocr-gen/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/khocr_gen"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking-imports
+    "RUF",  # ruff-specific rules
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["khocr_gen"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = ["-ra", "-q", "--strict-markers"]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["src/khocr_gen"]
+branch = true
+omit = ["src/khocr_gen/_rust_accel.py"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "pragma: no cover",
+]
+
+[tool.ty.environment]
+extra-paths = ["typings"]
