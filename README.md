@@ -121,8 +121,8 @@ See [CLI_REFERENCE.md](docs/CLI_REFERENCE.md) for complete command documentation
 
 ## Rust Acceleration
 
-See [RUST_ACCELERATION.md](docs/RUST_ACCELERATION.md) for what's accelerated, how the
-native extension is built/installed, and how to iterate on the `rust/` crate.
+See [RUST_ACCELERATION.md](docs/RUST_ACCELERATION.md) for what's accelerated,
+how the native extension is built/installed, and how to iterate on the `rust/` crate.
 
 ## Acknowledgments
 

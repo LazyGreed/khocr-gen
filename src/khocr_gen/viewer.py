@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tqdm import tqdm
+
 if TYPE_CHECKING:
     import argparse
 
@@ -116,7 +118,9 @@ def run(args: argparse.Namespace) -> int:
         labels_path = out_dir / "labels.txt"
 
         with labels_path.open("w", encoding="utf-8") as lf:
-            for idx, (jpeg_bytes, label) in enumerate(samples, start=1):
+            for idx, (jpeg_bytes, label) in enumerate(
+                tqdm(samples, desc="  Extracting", unit="img"), start=1
+            ):
                 img_name = f"img_{idx:06d}.jpg"
                 (out_dir / img_name).write_bytes(jpeg_bytes)
                 lf.write(f"{img_name}\t{label}\n")

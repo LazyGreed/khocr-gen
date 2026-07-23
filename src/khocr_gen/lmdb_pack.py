@@ -11,6 +11,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from tqdm import tqdm
+
 
 def pack_lmdb(
     labels_file: str | Path,
@@ -58,7 +60,7 @@ def pack_lmdb(
             txn.put(lbl_key, lbl_bytes)
         pairs.clear()
 
-    for line in lines:
+    for line in tqdm(lines, desc="  Packing LMDB", unit="img"):
         parts = line.split("\t", 1)
         if len(parts) < 2:
             continue
@@ -90,9 +92,6 @@ def pack_lmdb(
         img_key = f"image-{idx:09d}".encode()
         lbl_key = f"label-{idx:09d}".encode()
         pending_pairs.append((img_key, bytes(buf), lbl_key, label.encode("utf-8")))
-
-        if verbose and idx % 1000 == 0:
-            print(f"  Written {idx} samples…")
 
         if len(pending_pairs) >= commit_every:
             with env.begin(write=True) as txn:

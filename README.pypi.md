@@ -109,8 +109,8 @@ See [CLI_REFERENCE.md](https://github.com/LazyGreed/khocr-gen/blob/main/docs/CLI
 
 ## Rust Acceleration
 
-See [RUST_ACCELERATION.md](https://github.com/LazyGreed/khocr-gen/blob/main/docs/RUST_ACCELERATION.md) for what's accelerated, how the
-native extension is built/installed, and how to iterate on the `rust/` crate.
+See [RUST_ACCELERATION.md](https://github.com/LazyGreed/khocr-gen/blob/main/docs/RUST_ACCELERATION.md) for what's accelerated,
+how the native extension is built/installed, and how to iterate on the `rust/` crate.
 
 ## Acknowledgments
 

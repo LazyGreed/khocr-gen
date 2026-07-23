@@ -63,6 +63,13 @@ def add_args(parser: argparse.ArgumentParser) -> None:
     """Register all combine sub-command arguments onto *parser*."""
 
     parser.add_argument(
+        "-c",
+        "--config",
+        default=None,
+        metavar="FILE",
+        help="YAML config file. Values override argparse defaults; CLI flags override YAML.",
+    )
+    parser.add_argument(
         "datasets",
         nargs="+",
         metavar="DATASET",

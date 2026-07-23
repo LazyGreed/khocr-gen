@@ -247,8 +247,23 @@ geo_warp:
 # ... etc
 ```
 
-### Production recipe via CLI overrides
+## `combine` Config
+
+`khocr-gen combine` accepts the same `--config FILE` flag and auto-detects `configs/combine.yml`.
+Its keys mirror the `combine` CLI flags:
+
+```yaml
+# configs/combine.yml
+output: data_combined
+overwrite: false
+keep-raw: false
+jpeg-quality: 90
+map-size-gb: 256
+verbose: true
+```
+
+The dataset directories to merge are always given as positional arguments on the command line, not in the config file:
 
 ```bash
-khocr-gen generate --config configs/production.yml --copies 5 --height 64 --workers 8 --pack-lmdb
+khocr-gen combine --config configs/combine.yml data_run1/ data_run2/
 ```

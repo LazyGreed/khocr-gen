@@ -533,16 +533,14 @@ class DatasetGenerator:
                 mode="w", suffix=".txt", encoding="utf-8", delete=False
             )
             try:
-                for _idx, line in enumerate(
-                    load_corpus(
-                        corpus_path,
-                        min_length=min_length,
-                        max_length=max_length,
-                        max_lines=max_lines,
-                        normalizer=self._cfg.normalizer,
-                    ),
-                    start=1,
-                ):
+                filtered_lines = load_corpus(
+                    corpus_path,
+                    min_length=min_length,
+                    max_length=max_length,
+                    max_lines=max_lines,
+                    normalizer=self._cfg.normalizer,
+                )
+                for line in tqdm(filtered_lines, desc="  Filtering corpus", unit="line"):
                     tmp_corpus.write(line + "\n")
                 tmp_corpus.close()
 

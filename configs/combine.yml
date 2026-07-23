@@ -1,0 +1,6 @@
+output: data_combined
+overwrite: false
+keep-raw: false
+jpeg-quality: 90
+map-size-gb: 256
+verbose: true

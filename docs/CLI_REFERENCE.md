@@ -86,6 +86,7 @@ The legacy flags below are still supported:
 | `--keep-raw` | flag | - | *(legacy)* Keep raw image files after LMDB packing |
 | `--lmdb-jpeg-quality N` | int | 90 | JPEG quality for LMDB-stored images |
 | `--lmdb-map-size-gb N` | int | 256 | LMDB map size in GiB |
+| `--lmdb-verbose` | flag | - | Print skipped/corrupt image warnings during LMDB packing |
 
 #### Workers
 
@@ -159,15 +160,26 @@ khocr-gen verify [OPTIONS]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--fonts DIR` | str | `fonts/` | Root fonts directory |
-| `--output DIR` | str | `verify_output/` | Output directory for comparison images |
-| `--height PX` | int | 48 | Image height |
-| `--width PX` | int | *auto* | Image width |
-| `--text STR` | str | `Hello សួស្តី` | Text to render on verification images |
+| `--corpus FILE` | str | *none* | Optional corpus file to draw sample texts from (falls back to built-in samples) |
+| `--output-dir DIR`, `--output` | str | `verify_output/` | Directory for comparison PNG images |
+| `--height PX` | int | 48 | Image height in pixels |
+| `--width PX` | int | *auto* | Fixed image width; omit for variable width |
+| `--count N` | int | 6 | Number of sample texts per method |
+| `--repeats N` | int | 2 | Augmentation repeats per text, for variety |
+| `--method NAME [NAME ...]` | str | *all* | Restrict verification to specific method(s) |
+| `--show` | flag | - | Display each comparison interactively |
 
-### Example
+### Examples
 
 ```bash
-khocr-gen verify --fonts fonts/ --output verify_output/ --text "សួស្តី"
+# Verify every method using built-in sample texts
+khocr-gen verify --fonts fonts/ --output-dir verify_output/
+
+# Draw sample texts from a corpus, restrict to two methods
+khocr-gen verify --fonts fonts/ --corpus corpus/corpus.txt --method blur rotation
+
+# More samples per method, shown interactively
+khocr-gen verify --fonts fonts/ --count 10 --show
 ```
 
 Output: one PNG per augmentation method, showing min intensity (left) vs max intensity (right) side-by-side on a clean canvas.
@@ -186,9 +198,11 @@ khocr-gen view [OPTIONS]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--lmdb DIR` | str | `data/train/lmdb/` | Path to LMDB database |
+| `--lmdb DIR` | str | *required* | Path to LMDB directory (containing `data.mdb`) |
 | `--summary` | flag | - | Print summary (count, key stats) |
-| `--output-dir DIR` | str | *none* | Extract all images to directory |
+| `--count N` | int | 0 | Number of samples to read (0 = all, capped by `--max-count`) |
+| `--max-count N` | int | 100 | Default max samples read when `--count` is not given |
+| `--output-dir DIR`, `-o` | str | *none* | Extract all read samples to a directory |
 | `--labels-only` | flag | - | Print labels only, no images |
 
 ### Examples
@@ -222,10 +236,12 @@ The merged output is always LMDB.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--output DIR` | str | `data/combined/` | Output directory |
+| `--output DIR`, `-o` | str | `data_combined` | Output directory |
+| `--overwrite` | flag | - | Overwrite existing output directory without prompting |
 | `--keep-raw` | flag | - | Keep raw images after LMDB packing |
 | `--jpeg-quality N` | int | 90 | JPEG quality |
 | `--map-size-gb N` | int | 256 | LMDB map size in GiB |
+| `--verbose` | flag | - | Print merge and LMDB packing progress |
 
 ### Examples
 

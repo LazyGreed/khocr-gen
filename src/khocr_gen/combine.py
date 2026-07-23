@@ -13,6 +13,8 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tqdm import tqdm
+
 from .lmdb_pack import pack_lmdb
 
 if TYPE_CHECKING:
@@ -146,7 +148,12 @@ def combine_datasets(
             for split_dir, fmt in split_inputs:
                 if verbose:
                     print(f"  Merging {split_dir} ({fmt}) into {split}...")
-                for img_bytes, ext, text in _iter_split_samples(split_dir, fmt):
+                samples = tqdm(
+                    _iter_split_samples(split_dir, fmt),
+                    desc=f"  Merging {split}",
+                    unit="img",
+                )
+                for img_bytes, ext, text in samples:
                     n += 1
                     img_name = f"img_{n:09d}{ext}"
                     (merged_images / img_name).write_bytes(img_bytes)

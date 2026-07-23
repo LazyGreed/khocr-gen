@@ -2,7 +2,23 @@
 
 from __future__ import annotations
 
+import argparse
+
+from khocr_gen import combine_cmd
 from khocr_gen.combine import SPLITS, _detect_split_format
+
+
+class TestCombineCmdArgs:
+    def test_accepts_config_flag(self):
+        """`--config`/`-c` must be registered so `khocr-gen combine --config ...` parses.
+
+        cli.py treats "combine" as a config-capable command (alongside "generate") and
+        docs/CONFIG.md documents `--config` for it, so the subparser must expose it.
+        """
+        parser = argparse.ArgumentParser()
+        combine_cmd.add_args(parser)
+        ns = parser.parse_args(["data1", "--config", "configs/combine.yml"])
+        assert ns.config == "configs/combine.yml"
 
 
 class TestDetectSplitFormat:
