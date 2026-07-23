@@ -1,5 +1,7 @@
 # khocr-gen
 
+[![PyPI](https://img.shields.io/pypi/v/khocr-gen.svg)](https://pypi.org/project/khocr-gen/)
+
 Synthetic OCR training data generator for mixed Khmer/English text.
 
 ## Features
@@ -18,26 +20,24 @@ Synthetic OCR training data generator for mixed Khmer/English text.
 
 ## Installation
 
-```bash
-# Clone and install with uv
-git clone https://github.com/LazyGreed/khocr-gen.git
-cd khocr-gen
-uv sync
+### From PyPI
 
-# Or install with pip
-pip install .
+```bash
+pip install khocr-gen
 ```
 
-`uv sync` also compiles and installs the optional Rust acceleration extension
-(`khocr-gen-core`, from `rust/`). This requires a Rust toolchain (`cargo`/`rustc`) on
-`PATH` — see [RUST_ACCELERATION.md](docs/RUST_ACCELERATION.md). If the extension isn't
-available, khocr-gen falls back to pure-Python implementations automatically.
+### From source
+
+```bash
+git clone https://github.com/LazyGreed/khocr-gen.git
+cd khocr-gen
+pip install .
+```
 
 ### Requirements
 
 - Python >= 3.12
-- Rust toolchain (`cargo`/`rustc`, edition 2021) — only needed to build the optional
-  acceleration extension; the project works without it
+- Rust toolchain (`cargo`/`rustc`, edition 2021) - only needed to build the optional acceleration extension
 
 ## Quick Start
 
@@ -98,6 +98,7 @@ khocr-gen combine data_run1 data_run2 data_run3 --output data_merged
 
 All generation parameters can be specified via CLI flags, a YAML config file, or both (CLI overrides YAML).
 See [CONFIG.md](docs/CONFIG.md) for details.
+Example: [generate.yml](configs/generate.yml)
 
 ```bash
 khocr-gen generate --config configs/generate.yml
@@ -122,40 +123,6 @@ See [CLI_REFERENCE.md](docs/CLI_REFERENCE.md) for complete command documentation
 
 See [RUST_ACCELERATION.md](docs/RUST_ACCELERATION.md) for what's accelerated, how the
 native extension is built/installed, and how to iterate on the `rust/` crate.
-
-## Project Structure
-
-```text
-src/khocr_gen/
-├── cli.py              # CLI entry point
-├── config.py           # GenerationConfig + AugMethodConfig dataclasses
-├── config_loader.py    # YAML config loading
-├── corpus.py           # Corpus loading / filtering / counting
-├── fonts.py            # FontManager with script-aware font selection
-├── normalizer.py       # Khmer text normalization wrapper
-├── rendering.py        # ImageRenderer: text -> clean canvas -> augmentation
-├── augmentation.py     # 24 augmentation methods (unified registry)
-├── _rust_accel.py      # Native/pure-Python dispatch layer for the Rust extension
-├── parallel.py         # Multiprocess rendering workers
-├── lmdb_pack.py        # LMDB database packing
-├── combine.py          # n-way dataset merge
-├── data_generator.py   # DatasetGenerator orchestrator
-├── generate.py         # generate CLI command
-├── verify.py           # verify CLI command
-├── viewer.py           # view CLI command
-├── combine_cmd.py      # combine CLI command
-└── errors.py           # Exception hierarchy
-
-rust/                    # khocr-gen-core: PyO3/maturin native acceleration extension
-├── Cargo.toml
-├── pyproject.toml
-└── src/
-    ├── lib.rs           # PyO3 bindings + module registration
-    ├── augmentation.rs  # Accelerated augmentation methods
-    ├── fonts.rs         # FontManager + FontFace (cmap glyph lookup)
-    ├── rendering.rs     # Unwired canvas-rendering prototype (not yet bound to Python)
-    └── utils.rs
-```
 
 ## Acknowledgments
 
