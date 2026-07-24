@@ -7,6 +7,7 @@ Synthetic OCR training data generator for mixed Khmer/English text.
 ## Features
 
 - **Mixed-script rendering:** per-span font selection for Khmer + English
+- **Variable line height:** sample per-image canvas height (fixed/variable/bucketed), with optional proportional font scaling and random padding, no glyph clipping
 - **24 augmentation methods:** unified registry covering scanner/camera degradations and training-time transforms
 - **Rust acceleration:** 21/24 augmentation methods plus font glyph checking run through a native PyO3 extension, with automatic pure-Python fallback
 - **Isolated augmentation:** one effect per image, weighted by configurable probabilities
@@ -109,6 +110,37 @@ Config loading order (highest priority wins):
 2. YAML config file values
 3. Explicit CLI flags
 
+### Dataset Splitting
+
+Synthetic dataset generation supports 3-way disjoint text splitting (`train`, `val`, `test`):
+
+- **Default:** 80% train / 10% val / 10% test (neither flag specified).
+- **Only `--val-percent`:** test split set to 0% (e.g. `--val-percent 15` -> 85% train / 15% val / 0% test).
+- **Only `--test-percent`:** val split set to 0% (e.g. `--test-percent 15` -> 85% train / 0% val / 15% test).
+- **Custom ratios:** `--split-ratios 70 15 15`.
+- **Disable split:** `--split-ratios 100 0 0` or `--val-percent 0 --test-percent 0`.
+
+### Background Textures & Colors
+
+- **Textures:** 8 procedural texture overlay modes (`apply_background_texture`) including fine grain, coarse Gaussian, paper fibers, crease/fold lines, watermarks/stains, antique parchment, lined/grid paper, and scanner dust speckles.
+- **Color Palettes:** `--bg-color-mode {default, paper_tones, colored, dark_mode, gradient, random}` to render off-white, warm cream/sepia/recycled paper, soft pastels, dark mode (invert), or gradient backgrounds.
+
+### Variable Line Height
+
+By default every image is rendered at a fixed `--height`. `--line-height-mode {variable,bucketed}`
+samples a per-image canvas height instead:
+
+```bash
+khocr-gen generate --corpus corpus/corpus.txt \
+  --line-height-mode variable --min-line-height 32 --max-line-height 96 --line-height-step 8 \
+  --font-size-mode proportional --vertical-padding-mode random
+```
+
+Each canvas is rendered at its natural size and uniformly resized (never cropped) to the sampled
+height, so glyphs are never clipped. `labels.txt` is unchanged; add `--record-metadata` to also
+write a `metadata.jsonl` sidecar with per-image width/height/font info. See
+[CLI_REFERENCE.md](docs/CLI_REFERENCE.md#variable-line-height) for the full flag list.
+
 ## Augmentation
 
 24 methods in a unified registry (21 of them Rust-accelerated).
@@ -123,6 +155,20 @@ See [CLI_REFERENCE.md](docs/CLI_REFERENCE.md) for complete command documentation
 
 See [RUST_ACCELERATION.md](docs/RUST_ACCELERATION.md) for what's accelerated,
 how the native extension is built/installed, and how to iterate on the `rust/` crate.
+
+## Development
+
+```bash
+uv sync --extra dev      # installs dev deps + builds the Rust extension via maturin
+uv run ruff check .      # lint
+uv run ruff format .     # format
+uv run pytest            # tests + coverage config from pyproject.toml
+uv run ty check          # type check (informational; not yet a merge gate)
+```
+
+CI (`.github/workflows/ci.yml`) runs the same commands on a Python 3.12/3.13 matrix, plus a
+separate job that builds the `rust/` crate (`cargo build --release`). See
+[RUST_ACCELERATION.md](docs/RUST_ACCELERATION.md) for iterating on the Rust crate directly.
 
 ## Acknowledgments
 

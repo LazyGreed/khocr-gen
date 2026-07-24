@@ -7,6 +7,7 @@ and applies exactly one augmentation method per rendered image (isolated augment
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import os
 import random
@@ -116,28 +117,32 @@ def _init_render_worker(config_dict: dict[str, Any]) -> None:
         "output_format": config_dict.get("output_format", "jpg"),
         "jpeg_quality": config_dict.get("jpeg_quality", 90),
         "storage": config_dict.get("storage", "raw"),
+        "record_metadata": config_dict.get("record_metadata", False),
     }
 
 
 def _render_sample_batch(
     batch: list[tuple[int, str, Any]],
-) -> tuple[list[str], int, int, list[str]]:
+) -> tuple[list[str], int, int, list[str], list[str], list[int]]:
     """Render a batch of samples in the worker process.
 
     Each sample is rendered to a clean canvas,
     then exactly one augmentation method is applied (chosen probabilistically from the enabled methods).
 
     Returns:
-        (labels_lines, attempted_count, success_count, error_messages)
+        (labels_lines, attempted_count, success_count, error_messages, metadata_lines, heights)
     """
     renderer: ImageRenderer = _WORKER_STATE["renderer"]
     split_name: str = _WORKER_STATE["split_name"]
     output_images_dir = Path(_WORKER_STATE["output_images_dir"])
     font_mode: str = _WORKER_STATE["font_mode"]
     retry_limit: int = _WORKER_STATE["retry_limit"]
+    record_metadata: bool = _WORKER_STATE.get("record_metadata", False)
     current_retry_limit = 1 if font_mode == "all" else retry_limit
 
     labels: list[str] = []
+    meta_lines: list[str] = []
+    heights: list[int] = []
     error_messages: list[str] = []
     success_count = 0
 
@@ -148,6 +153,7 @@ def _render_sample_batch(
 
     for current_idx, text, font_ref_or_image in batch:
         try:
+            meta: dict[str, Any] = {}
             if image_dir:
                 # Image-dir mode: augment an existing image
                 img_path = Path(image_dir) / font_ref_or_image
@@ -172,7 +178,7 @@ def _render_sample_batch(
                         continue
                     _, img = aug_results[0]
                 else:
-                    _, img = result
+                    _, img, meta = result
             else:
                 # Text-rendering mode
                 result = renderer.render_with_one_augmentation(
@@ -183,7 +189,7 @@ def _render_sample_batch(
                 )
                 if result is None:
                     continue
-                _, img = result
+                _, img, meta = result
 
             if img is None:
                 continue
@@ -197,10 +203,21 @@ def _render_sample_batch(
                 raise RuntimeError(f"cv2.imwrite failed for output path: {img_path}")
 
             labels.append(f"{img_filename}\t{text}\n")
+            heights.append(int(img.shape[0]))
+            if record_metadata:
+                record = {
+                    "image": img_filename,
+                    "text": text,
+                    "width": int(img.shape[1]),
+                    "height": int(img.shape[0]),
+                    "font": meta.get("font"),
+                    "font_size": meta.get("font_size"),
+                }
+                meta_lines.append(json.dumps(record, ensure_ascii=False) + "\n")
             success_count += 1
         except Exception as exc:
             if len(error_messages) < 3:
                 short_text = text[:30] if len(text) > 30 else text
                 error_messages.append(f"    Failed for '{short_text}...': {exc}")
 
-    return labels, len(batch), success_count, error_messages
+    return labels, len(batch), success_count, error_messages, meta_lines, heights

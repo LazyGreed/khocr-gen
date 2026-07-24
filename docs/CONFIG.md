@@ -46,12 +46,30 @@ mixed-font-prob: 0.0
 retry-limit: 10
 random-align-when-padded: false
 
+# Variable line height (all optional; default is fixed --height for every image)
+line-height-mode: fixed        # fixed | variable | bucketed
+min-line-height: 32
+max-line-height: 96
+line-height-step: 8
+line-height-distribution: uniform  # uniform | triangular
+# default-line-height: 48          # triangular peak; defaults to range midpoint
+font-size-mode: fixed           # fixed | proportional
+min-font-scale: 0.65
+max-font-scale: 0.9
+vertical-padding-mode: fixed    # fixed | random
+min-vertical-padding-ratio: 0.04
+max-vertical-padding-ratio: 0.18
+record-metadata: false          # write metadata.jsonl per split
+
 # Corpus
 corpus: corpus/corpus.txt
 min-length: 1
 max-length: 260
 lines: 0               # 0 = all
 val-percent: 10.0
+# test-percent: 10.0          # if only val-percent is set, test defaults to 0
+# split-ratios: [80, 10, 10]  # overrides val-percent/test-percent
+# test-file: ""               # separate test corpus; sole source of the test split when set
 seed: 42
 
 # Output

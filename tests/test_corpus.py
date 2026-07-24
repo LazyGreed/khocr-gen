@@ -201,3 +201,48 @@ class TestCountCorpus:
             assert stats["passing"] == 2
         finally:
             tmp.unlink()
+
+
+class TestThreeWayDisjointSplit:
+    """Test 3-way text splitting without text overlap across train/val/test."""
+
+    def test_three_way_disjoint_split_no_overlap(self):
+        from khocr_gen.data_generator import DatasetGenerator
+
+        lines = [f"sample_text_{i % 30}" for i in range(300)]
+        train, val, test = DatasetGenerator._split_lines_without_text_overlap(
+            lines, val_ratio=0.1, test_ratio=0.1, seed=42
+        )
+        assert len(train) > 0
+        assert len(val) > 0
+        assert len(test) > 0
+
+        train_texts = {t[1] if isinstance(t, tuple) else t for t in train}
+        val_texts = {t[1] if isinstance(t, tuple) else t for t in val}
+        test_texts = {t[1] if isinstance(t, tuple) else t for t in test}
+
+        assert len(train_texts & val_texts) == 0
+        assert len(train_texts & test_texts) == 0
+        assert len(val_texts & test_texts) == 0
+
+    def test_zero_test_ratio_returns_empty_test_set(self):
+        from khocr_gen.data_generator import DatasetGenerator
+
+        lines = [f"text_{i % 20}" for i in range(100)]
+        train, val, test = DatasetGenerator._split_lines_without_text_overlap(
+            lines, val_ratio=0.2, test_ratio=0.0, seed=42
+        )
+        assert len(train) > 0
+        assert len(val) > 0
+        assert len(test) == 0
+
+    def test_zero_ratios_returns_all_in_train(self):
+        from khocr_gen.data_generator import DatasetGenerator
+
+        lines = ["a", "b", "c", "d"]
+        train, val, test = DatasetGenerator._split_lines_without_text_overlap(
+            lines, val_ratio=0.0, test_ratio=0.0, seed=42
+        )
+        assert len(train) == 4
+        assert len(val) == 0
+        assert len(test) == 0

@@ -8,6 +8,8 @@ from pathlib import Path
 
 from .config import GenerationConfig
 from .corpus import count_corpus
+from .errors import InputValidationError
+from .line_height import validate_line_height_config
 
 
 def _validation_percent(value: str) -> float:
@@ -89,6 +91,15 @@ def run(args: argparse.Namespace) -> int:
     gen_cfg = GenerationConfig.from_args(args)
     gen_cfg.fonts_dir = str(fonts_dir)
 
+    try:
+        validate_line_height_config(gen_cfg)
+    except InputValidationError as exc:
+        print(f"error: {exc}")
+        return 2
+
+    # Resolve train/val/test ratios using GenerationConfig rules
+    _train_ratio, val_ratio, test_ratio = gen_cfg.resolve_split_ratios()
+
     generator = DatasetGenerator(gen_cfg)
 
     try:
@@ -96,13 +107,15 @@ def run(args: argparse.Namespace) -> int:
             corpus_path=corpus_path,
             output_dir=output_dir,
             val_file=args.val_file if hasattr(args, "val_file") else None,
+            test_file=getattr(args, "test_file", None),
             copies=args.copies,
             font_mode=args.font_mode,
             retry_limit=args.retry_limit,
             existing_mode=existing_mode,
             workers=args.workers,
             split_seed=args.seed,
-            val_ratio=args.val_percent / 100.0,
+            val_ratio=val_ratio,
+            test_ratio=test_ratio,
             image_dir=args.image_dir if hasattr(args, "image_dir") else None,
             min_length=args.min_length,
             max_length=args.max_length,
@@ -120,7 +133,7 @@ def run(args: argparse.Namespace) -> int:
         else:
             labels_files = [
                 str(output_dir / s / "labels.txt")
-                for s in ("train", "val")
+                for s in ("train", "val", "test")
                 if (output_dir / s / "labels.txt").exists()
             ]
             if labels_files:
@@ -140,7 +153,7 @@ def run(args: argparse.Namespace) -> int:
         from .lmdb_pack import pack_lmdb
 
         print("\nPacking into LMDB databases...")
-        for split in ["train", "val"]:
+        for split in ["train", "val", "test"]:
             labels_file = output_dir / split / "labels.txt"
             if not labels_file.exists():
                 continue

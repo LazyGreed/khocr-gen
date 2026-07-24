@@ -49,6 +49,43 @@ khocr-gen generate --corpus corpus/corpus.txt --storage both
 | `--mixed-font-prob F` | float | 0.0 | Probability of per-span font for mixed Khmer/English |
 | `--retry-limit N` | int | 10 | Font selection retries when font lacks glyphs |
 
+#### Variable line height
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--line-height-mode {fixed,variable,bucketed}` | str | `fixed` | `fixed` = every image uses `--height` (backward compatible). `variable` = sample a height per image from the min/max range. `bucketed` = sample from the fixed set of heights spaced by `--line-height-step`. |
+| `--min-line-height PX` | int | 32 | Minimum sampled line height |
+| `--max-line-height PX` | int | 96 | Maximum sampled line height |
+| `--line-height-step PX` | int | 8 | Align sampled/bucketed heights to a multiple of this many pixels |
+| `--line-height-distribution {uniform,triangular}` | str | `uniform` | Shape of the `variable`-mode distribution; `triangular` clusters around `--default-line-height` |
+| `--default-line-height PX` | int | *(range midpoint)* | Peak height for the triangular distribution |
+| `--font-size-mode {fixed,proportional}` | str | `fixed` | `fixed` = choose from the preloaded font sizes. `proportional` = size the font relative to the sampled canvas height |
+| `--min-font-scale F` | float | 0.65 | Minimum glyph height as a fraction of canvas height (font-size-mode=proportional) |
+| `--max-font-scale F` | float | 0.9 | Maximum glyph height as a fraction of canvas height (font-size-mode=proportional) |
+| `--vertical-padding-mode {fixed,random}` | str | `fixed` | `random` samples top/bottom padding as a ratio of canvas height instead of a constant pixel amount |
+| `--min-vertical-padding-ratio F` | float | 0.04 | Minimum vertical padding as a fraction of canvas height |
+| `--max-vertical-padding-ratio F` | float | 0.18 | Maximum vertical padding as a fraction of canvas height |
+| `--record-metadata` | flag | false | Write a `metadata.jsonl` sidecar (image/text/width/height/font/font_size) per split |
+
+Every generated image is produced by rendering onto a clean canvas at its
+natural size and then uniformly *resizing* (never cropping) to the sampled
+target height, so glyphs — including Khmer diacritics — are never clipped
+regardless of which height gets sampled. `labels.txt` is unaffected: variable
+height is encoded entirely in the image dimensions.
+
+```bash
+# Sample heights in [32, 96], aligned to 8px steps
+khocr-gen generate --corpus corpus/corpus.txt \
+  --line-height-mode variable --min-line-height 32 --max-line-height 96 --line-height-step 8
+
+# Also vary font scale and padding, and record per-sample metadata
+khocr-gen generate --corpus corpus/corpus.txt \
+  --line-height-mode variable --min-line-height 32 --max-line-height 96 \
+  --font-size-mode proportional --min-font-scale 0.65 --max-font-scale 0.9 \
+  --vertical-padding-mode random --min-vertical-padding-ratio 0.04 --max-vertical-padding-ratio 0.18 \
+  --record-metadata
+```
+
 #### Corpus
 
 | Flag | Type | Default | Description |
@@ -57,8 +94,11 @@ khocr-gen generate --corpus corpus/corpus.txt --storage both
 | `--min-length N` | int | 1 | Minimum character length |
 | `--max-length N` | int | 260 | Maximum character length |
 | `--lines N` | int | 0 | Max lines to use (0 = all) |
-| `--seed N` | int | 42 | Random seed for train/val split |
-| `--val-percent PCT` | float | 10.0 | Validation split percentage [0, 100) |
+| `--seed N` | int | 42 | Random seed for deterministic train/val/test splitting |
+| `--val-percent PCT` | float | *(10.0 if unset)* | Validation split percentage [0, 100). If only this is set, test=0. |
+| `--test-percent PCT` | float | *(10.0 if unset)* | Test split percentage [0, 100). If only this is set, val=0. |
+| `--split-ratios TRAIN VAL TEST` | float×3 | *none* | Explicit ratios (e.g. `80 10 10`), normalised to sum to 1.0. Overrides `--val-percent`/`--test-percent`. Use `100 0 0` to disable splitting. |
+| `--test-file FILE` | str | *none* | Separate test corpus file. When set, it is the sole source of the test split — the ratio-based split does not also carve one out. |
 | `--count-only` | flag | - | Print filter stats and estimated image count, then exit |
 | `--image-dir DIR` | str | *none* | Path to existing images (bypass text rendering) |
 

@@ -49,7 +49,7 @@ def run(args: argparse.Namespace) -> int:
         return 2
 
     if not counts:
-        print("Nothing to combine, no dataset has a train or val split.")
+        print("Nothing to combine, no dataset has a train, val, or test split.")
         return 1
 
     for split, n in counts.items():

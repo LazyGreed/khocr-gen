@@ -19,8 +19,12 @@ from typing import TYPE_CHECKING, Any
 import cv2
 import numpy as np
 
+from .logging import get_logger
+
 if TYPE_CHECKING:
     from pathlib import Path
+
+_LOGGER = get_logger("augmentation")
 
 try:
     os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
@@ -219,6 +223,7 @@ def apply_blur(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
         )
         return pipeline(image=img)["image"]
     except Exception:
+        _LOGGER.debug("apply_blur: albumentations pipeline failed", exc_info=True)
         return img
 
 
@@ -244,6 +249,7 @@ def apply_distortion(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nda
         )
         return pipeline(image=img)["image"]
     except Exception:
+        _LOGGER.debug("apply_distortion: albumentations pipeline failed", exc_info=True)
         return img
 
 
@@ -275,6 +281,7 @@ def apply_albu_noise(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nda
         )
         return pipeline(image=img)["image"]
     except Exception:
+        _LOGGER.debug("apply_albu_noise: albumentations pipeline failed", exc_info=True)
         return img
 
 
@@ -362,26 +369,49 @@ def apply_salt_pepper(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nd
 
 
 def apply_background_texture(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
-    """Procedural paper texture overlay.
-    intensity -> blend alpha [0.05, 0.30].
+    """Procedural paper/document texture overlay.
+
+    Eight texture modes are sampled uniformly at random:
+
+    - Mode 0: Fine grain noise (intensity -> alpha [0.05, 0.30]).
+    - Mode 1: Coarse Gaussian low-frequency noise.
+    - Mode 2: Horizontal paper-fiber streaks (grayscale only).
+    - Mode 3: Document crease/fold line with shadow & highlight edge.
+    - Mode 4: Watermark / coffee-stain elliptical blotch.
+    - Mode 5: Antique parchment (multi-scale octave frequency noise).
+    - Mode 6: Lined / grid notebook-paper ruling.
+    - Mode 7: Scanner dust & speckle artefacts.
+
+    In all modes, texture is suppressed over dark ink pixels to avoid obscuring text.
+    intensity is in [0, 1].
     """
     h, w = img.shape[:2]
     bg = _estimate_bg(img)
     out = img.astype(np.float32)
 
-    mode = random.randint(0, 2)
+    mode = random.randint(0, 7)
+
     if mode == 0:
+        # Fine Gaussian grain
         sigma = 1.0 + intensity * 10.0
         grain = np.random.normal(0.0, sigma, (h, w)).astype(np.float32)
+        if out.ndim == 3:
+            grain = grain[..., None]
         alpha = 0.05 + intensity * 0.25
         out = out + grain * alpha
+
     elif mode == 1:
+        # Coarse low-frequency noise
         coarse = np.random.normal(0.0, 20.0, (max(1, h // 4), max(1, w // 4))).astype(np.float32)
         coarse = cv2.resize(coarse, (w, h), interpolation=cv2.INTER_LINEAR)
         coarse = cv2.GaussianBlur(coarse, (0, 0), sigmaX=max(1.0, w * 0.05))
+        if out.ndim == 3:
+            coarse = coarse[..., None]
         alpha = 0.03 + intensity * 0.20
         out = out + coarse * alpha
-    else:
+
+    elif mode == 2:
+        # Paper-fiber horizontal streaks (grayscale only)
         if out.ndim == 2:
             streak_count = random.randint(3, 12)
             for _ in range(streak_count):
@@ -396,7 +426,103 @@ def apply_background_texture(img: np.ndarray, intensity: float, **kwargs: Any) -
                     ys = np.clip((row + xs * angle).astype(np.int32), 0, h - 1)
                     out[ys, np.arange(w)] += intensity_streak
 
-    # Suppress texture over dark ink
+    elif mode == 3:
+        # Document crease / fold line with shadow + highlight edge
+        direction = random.choice(["horizontal", "vertical"])
+        alpha_shadow = 0.06 + intensity * 0.20
+        alpha_highlight = 0.04 + intensity * 0.12
+        half_w = max(1, int(2 + intensity * 4))
+        if direction == "horizontal":
+            cy = random.randint(h // 6, 5 * h // 6)
+            for dy in range(-half_w, half_w + 1):
+                row = cy + dy
+                if not (0 <= row < h):
+                    continue
+                # shadow side
+                blend = alpha_shadow * (1.0 - abs(dy) / (half_w + 1))
+                out[row] = out[row] - 255.0 * blend
+            highlight_row = min(h - 1, cy + half_w + 1)
+            out[highlight_row] = out[highlight_row] + 255.0 * alpha_highlight
+        else:
+            cx = random.randint(w // 6, 5 * w // 6)
+            for dx in range(-half_w, half_w + 1):
+                col = cx + dx
+                if not (0 <= col < w):
+                    continue
+                blend = alpha_shadow * (1.0 - abs(dx) / (half_w + 1))
+                out[:, col] = out[:, col] - 255.0 * blend
+            highlight_col = min(w - 1, cx + half_w + 1)
+            out[:, highlight_col] = out[:, highlight_col] + 255.0 * alpha_highlight
+
+    elif mode == 4:
+        # Watermark / coffee-stain elliptical blotch
+        cx = random.randint(w // 4, 3 * w // 4)
+        cy = random.randint(h // 4, 3 * h // 4)
+        rx = max(4, int(w * (0.05 + intensity * 0.25)))
+        ry = max(4, int(h * (0.10 + intensity * 0.30)))
+        # Build a soft elliptical mask
+        yy, xx = np.ogrid[:h, :w]
+        dist = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2
+        mask = np.clip(1.0 - dist, 0.0, 1.0).astype(np.float32)
+        if out.ndim == 3:
+            mask = mask[..., None]
+        # Randomise tone: warm yellow-brown tint for grayscale, slight darkening
+        tint = random.uniform(-18.0, -6.0) * intensity  # slightly darken background
+        out = out + mask * tint
+
+    elif mode == 5:
+        # Antique parchment: multi-scale octave frequency noise
+        parchment = np.zeros((h, w), dtype=np.float32)
+        amplitude = 1.0
+        scale_h, scale_w = h, w
+        for _ in range(4):
+            scale_h = max(1, scale_h // 2)
+            scale_w = max(1, scale_w // 2)
+            octave = np.random.normal(0.0, 1.0, (scale_h, scale_w)).astype(np.float32)
+            octave = cv2.resize(octave, (w, h), interpolation=cv2.INTER_LINEAR)
+            parchment += octave * amplitude
+            amplitude *= 0.5
+        # Normalise and scale
+        parchment = (parchment - parchment.min()) / (parchment.max() - parchment.min() + 1e-6)
+        parchment = (parchment - 0.5) * (10.0 + intensity * 25.0)
+        if out.ndim == 3:
+            parchment = parchment[..., None]
+        out = out + parchment
+
+    elif mode == 6:
+        # Lined / grid notebook paper ruling
+        rule_alpha = 0.04 + intensity * 0.18
+        line_style = random.choice(["horizontal", "grid"])
+        line_spacing = random.randint(max(2, h // 12), max(3, h // 5))
+        line_color = float(bg) * (1.0 - rule_alpha) + (180.0 if bg > 128 else 200.0) * rule_alpha
+        # Horizontal lines
+        for y in range(0, h, line_spacing):
+            thickness = 1
+            out[y : y + thickness] = (
+                out[y : y + thickness] * (1.0 - rule_alpha) + line_color * rule_alpha
+            )
+        if line_style == "grid":
+            col_spacing = random.randint(max(4, w // 20), max(8, w // 8))
+            for x in range(0, w, col_spacing):
+                thickness = 1
+                out[:, x : x + thickness] = (
+                    out[:, x : x + thickness] * (1.0 - rule_alpha) + line_color * rule_alpha
+                )
+
+    else:
+        # mode 7: Scanner dust & speckle artefacts
+        speckle_count = int(5 + intensity * 40)
+        for _ in range(speckle_count):
+            sx = random.randint(0, w - 1)
+            sy = random.randint(0, h - 1)
+            r = random.randint(1, max(1, int(1 + intensity * 3)))
+            # Alternate between dark dust and bright scratch
+            val = random.choice([-40.0, -20.0, 30.0, 50.0]) * intensity
+            y1, y2 = max(0, sy - r), min(h, sy + r + 1)
+            x1, x2 = max(0, sx - r), min(w, sx + r + 1)
+            out[y1:y2, x1:x2] = out[y1:y2, x1:x2] + val
+
+    # Suppress texture over dark ink pixels (all modes, grayscale only)
     if img.ndim == 2:
         bg_f = float(bg)
         ink_strength = np.clip((bg_f - img.astype(np.float32)) / max(1.0, bg_f), 0.0, 1.0)
@@ -517,7 +643,7 @@ def apply_online_blur(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nd
             result = A.MotionBlur(blur_limit=kernel, p=1.0)(image=img)["image"]
             return result
         except Exception:
-            pass
+            _LOGGER.debug("apply_online_blur: MotionBlur failed", exc_info=True)
 
     return cv2.GaussianBlur(img, (kernel, kernel), 0)
 
@@ -725,6 +851,43 @@ _RUST_METHODS = [
     "anisotropic_dilation",
 ]
 
+# Grayscale-only Rust methods that lack a native RGB variant. When the pipeline
+# runs in RGB color-mode the clean canvas is a HxWx3 array, but these native
+# functions accept only a 2D (HxW) uint8 array -- passing RGB raises the PyO3
+# error "'ndarray' object cannot be converted to 'PyArray<T, D>'". Wrap them so
+# RGB input is collapsed to grayscale, transformed once, and expanded back to
+# RGB. Applying the kernel per-channel would be wrong for the many methods that
+# draw fresh randomness each call (rotation, perspective, elastic, geo_warp,
+# salt_pepper, random_crop, ...): each channel would get a different transform,
+# desynchronising the channels and introducing chromatic fringing. A single
+# grayscale pass keeps the three channels consistent. (The RGB-preferred methods
+# -- hsv, reverse, brightness_contrast -- are already RGB-aware wrappers exported
+# by _rust_accel and are excluded here.)
+_GRAYSCALE_ONLY_RUST_METHODS: frozenset[str] = frozenset(_RUST_METHODS) - _RGB_PREFERRED_METHODS
+
+
+def _wrap_grayscale_rust_fn(rust_fn: Any) -> Any:
+    """Wrap a 2D-only Rust augmentation so RGB input is handled via grayscale.
+
+    RGB (HxWx3) arrays are converted to a single grayscale plane, passed through
+    the native 2D kernel once, then broadcast back to 3 channels. Grayscale
+    (HxW) input is passed straight through.
+    """
+
+    def _wrapper(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
+        if img.ndim == 3 and img.shape[2] == 3:
+            gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            result = rust_fn(np.ascontiguousarray(gray), intensity)
+            if result is None:
+                return None
+            if result.ndim == 2:
+                return cv2.cvtColor(result, cv2.COLOR_GRAY2RGB)
+            return result
+        return rust_fn(np.ascontiguousarray(img), intensity)
+
+    return _wrapper
+
+
 try:
     from . import _rust_accel as _ra  # type: ignore[import-untyped,assignment]
 
@@ -733,12 +896,12 @@ try:
         for _method in _RUST_METHODS:
             _rust_fn = getattr(_ra, f"apply_{_method}", None)
             if _rust_fn is not None and _method in AUG_METHODS:
-                AUG_METHODS[_method] = _rust_fn
+                if _method in _GRAYSCALE_ONLY_RUST_METHODS:
+                    AUG_METHODS[_method] = _wrap_grayscale_rust_fn(_rust_fn)
+                else:
+                    AUG_METHODS[_method] = _rust_fn
                 _replaced += 1
         if _replaced:
-            import logging
-
-            _LOGGER = logging.getLogger("khocr_gen.augmentation")
             _LOGGER.info(
                 "Rust acceleration: %d/%d augmentation methods using native code",
                 _replaced,

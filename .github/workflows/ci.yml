@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python:
+    name: python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Sync dependencies (builds the Rust extension via maturin)
+        run: uv sync --extra dev --python ${{ matrix.python-version }}
+
+      - name: Lint (ruff check)
+        run: uv run ruff check .
+
+      - name: Format check (ruff format)
+        run: uv run ruff format --check .
+
+      - name: Type check (ty, non-blocking)
+        run: uv run ty check
+        continue-on-error: true
+
+      - name: Test
+        run: uv run pytest --cov=khocr_gen --cov-report=term-missing
+
+  rust:
+    name: rust (fmt, clippy, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      # Existing code isn't fully cargo-fmt/clippy clean yet; keep these visible
+      # but non-blocking until that cleanup happens separately. Build is the real gate.
+      - name: Format check (non-blocking)
+        run: cargo fmt --check
+        continue-on-error: true
+
+      - name: Clippy (non-blocking)
+        run: cargo clippy --all-targets -- -D warnings
+        continue-on-error: true
+
+      - name: Build (release)
+        run: cargo build --release

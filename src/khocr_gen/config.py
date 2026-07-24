@@ -86,6 +86,25 @@ class GenerationConfig:
     color_mode: int = 1  # 1 = grayscale, 3 = RGB
     random_align_when_padded: bool = False
 
+    # ── Variable line height ───────────────────────────────────────────────
+    line_height_mode: str = "fixed"  # "fixed" | "variable" | "bucketed"
+    min_line_height: int = 32
+    max_line_height: int = 96
+    line_height_step: int = 8
+    line_height_distribution: str = "uniform"  # "uniform" | "triangular"
+    default_line_height: int | None = None  # triangular peak; defaults to range midpoint
+
+    # Text scale / padding within the sampled canvas height
+    font_size_mode: str = "fixed"  # "fixed" | "proportional"
+    min_font_scale: float = 0.65
+    max_font_scale: float = 0.9
+    vertical_padding_mode: str = "fixed"  # "fixed" | "random"
+    min_vertical_padding_ratio: float = 0.04
+    max_vertical_padding_ratio: float = 0.18
+
+    # Optional per-sample metadata sidecar
+    record_metadata: bool = False
+
     # ── Font / language ────────────────────────────────────────────────────
     language: str = "mixed"
     fonts_dir: str = "fonts"
@@ -98,7 +117,9 @@ class GenerationConfig:
     min_length: int = 1
     max_length: int = 260
     max_lines: int = 0
-    val_percent: float = 10.0
+    val_percent: float | None = None
+    test_percent: float | None = None
+    split_ratios: tuple[float, float, float] | None = None
     seed: int = 42
 
     # ── Output ─────────────────────────────────────────────────────────────
@@ -111,6 +132,9 @@ class GenerationConfig:
     jpeg_quality: int = 90  # JPEG quality for jpg output
     storage: str = "raw"  # "raw" | "lmdb" | "both"
     keep_raw: bool = False  # legacy; prefer storage="both"
+    bg_color_mode: str = (
+        "random"  # "default" | "paper_tones" | "colored" | "dark_mode" | "gradient" | "random"
+    )
 
     # ── Worker reliability ─────────────────────────────────────────────────
     workers: int = 0  # 0 = auto
@@ -255,6 +279,75 @@ class GenerationConfig:
     normalizer: NormalizerConfig = field(default_factory=NormalizerConfig)
 
     # ───────────────────────────────────────────────────────────────────────
+    # Split ratio resolution
+    # ───────────────────────────────────────────────────────────────────────
+
+    def resolve_split_ratios(self) -> tuple[float, float, float]:
+        """Resolve (train_ratio, val_ratio, test_ratio) from config fields.
+
+        Resolution rules (highest priority first):
+
+        1. ``split_ratios`` set explicitly:
+           Normalise the three values so they sum to 1.0.
+           Example: ``split_ratios=(70, 15, 15)`` -> ``(0.70, 0.15, 0.15)``.
+
+        2. Both ``val_percent`` and ``test_percent`` set:
+           ``train = 1 - val/100 - test/100``.
+
+        3. Only ``val_percent`` set:
+           ``test = 0``, ``train = 1 - val/100``.
+           Example: ``--val-percent 15`` -> ``(0.85, 0.15, 0.0)``.
+
+        4. Only ``test_percent`` set:
+           ``val = 0``, ``train = 1 - test/100``.
+           Example: ``--test-percent 15`` -> ``(0.85, 0.0, 0.15)``.
+
+        5. Neither set (default):
+           ``(0.80, 0.10, 0.10)``.
+
+        To disable all splitting (100 % train), set:
+        - ``--split-ratios 100 0 0``, or
+        - ``--val-percent 0 --test-percent 0``.
+        """
+        if self.split_ratios is not None:
+            a, b, c = self.split_ratios
+            total = a + b + c
+            if total <= 0.0:
+                return (1.0, 0.0, 0.0)
+            return (a / total, b / total, c / total)
+
+        val_set = self.val_percent is not None
+        test_set = self.test_percent is not None
+
+        if val_set and test_set:
+            v = max(0.0, min(100.0, float(self.val_percent)))  # type: ignore[arg-type]
+            t = max(0.0, min(100.0, float(self.test_percent)))  # type: ignore[arg-type]
+            tr = max(0.0, 100.0 - v - t)
+            total = tr + v + t
+            return (tr / total, v / total, t / total)
+
+        if val_set:
+            v = max(0.0, min(100.0, float(self.val_percent)))  # type: ignore[arg-type]
+            tr = max(0.0, 100.0 - v)
+            return (
+                tr / (tr + v) if (tr + v) > 0 else 1.0,
+                v / (tr + v) if (tr + v) > 0 else 0.0,
+                0.0,
+            )
+
+        if test_set:
+            t = max(0.0, min(100.0, float(self.test_percent)))  # type: ignore[arg-type]
+            tr = max(0.0, 100.0 - t)
+            return (
+                tr / (tr + t) if (tr + t) > 0 else 1.0,
+                0.0,
+                t / (tr + t) if (tr + t) > 0 else 0.0,
+            )
+
+        # Default: 80/10/10
+        return (0.80, 0.10, 0.10)
+
+    # ───────────────────────────────────────────────────────────────────────
     # CLI
     # ───────────────────────────────────────────────────────────────────────
 
@@ -325,6 +418,109 @@ class GenerationConfig:
             action="store_true",
             help="Random left/center/right alignment when --width pads the image",
         )
+
+        # ── Variable line height ─────────────────────────────────────────────
+        g_vh = parser.add_argument_group("Variable line height")
+        g_vh.add_argument(
+            "--line-height-mode",
+            choices=["fixed", "variable", "bucketed"],
+            default="fixed",
+            help=(
+                "'fixed' = every image uses --height (default, backward compatible). "
+                "'variable' = sample a height per image from [--min-line-height, "
+                "--max-line-height]. 'bucketed' = sample from the fixed set of heights "
+                "spaced by --line-height-step across that range."
+            ),
+        )
+        g_vh.add_argument(
+            "--min-line-height",
+            type=int,
+            default=32,
+            metavar="PX",
+            help="Minimum sampled line height in pixels (default: 32)",
+        )
+        g_vh.add_argument(
+            "--max-line-height",
+            type=int,
+            default=96,
+            metavar="PX",
+            help="Maximum sampled line height in pixels (default: 96)",
+        )
+        g_vh.add_argument(
+            "--line-height-step",
+            type=int,
+            default=8,
+            metavar="PX",
+            help="Align sampled/bucketed heights to a multiple of this many pixels (default: 8)",
+        )
+        g_vh.add_argument(
+            "--line-height-distribution",
+            choices=["uniform", "triangular"],
+            default="uniform",
+            help=(
+                "Shape of the height distribution for --line-height-mode=variable. "
+                "'triangular' clusters samples around --default-line-height (default: uniform)"
+            ),
+        )
+        g_vh.add_argument(
+            "--default-line-height",
+            type=int,
+            default=None,
+            metavar="PX",
+            help="Peak height for the triangular distribution (default: midpoint of the range)",
+        )
+        g_vh.add_argument(
+            "--font-size-mode",
+            choices=["fixed", "proportional"],
+            default="fixed",
+            help=(
+                "'fixed' = choose from the preloaded font sizes (default). "
+                "'proportional' = choose a font size scaled to the sampled canvas height "
+                "(--min-font-scale..--max-font-scale)"
+            ),
+        )
+        g_vh.add_argument(
+            "--min-font-scale",
+            type=float,
+            default=0.65,
+            metavar="F",
+            help="Minimum glyph height as a fraction of canvas height when font-size-mode=proportional (default: 0.65)",
+        )
+        g_vh.add_argument(
+            "--max-font-scale",
+            type=float,
+            default=0.9,
+            metavar="F",
+            help="Maximum glyph height as a fraction of canvas height when font-size-mode=proportional (default: 0.9)",
+        )
+        g_vh.add_argument(
+            "--vertical-padding-mode",
+            choices=["fixed", "random"],
+            default="fixed",
+            help=(
+                "'fixed' = existing constant pixel padding (default). "
+                "'random' = sample top/bottom padding as a ratio of canvas height"
+            ),
+        )
+        g_vh.add_argument(
+            "--min-vertical-padding-ratio",
+            type=float,
+            default=0.04,
+            metavar="F",
+            help="Minimum vertical padding as a fraction of canvas height (default: 0.04)",
+        )
+        g_vh.add_argument(
+            "--max-vertical-padding-ratio",
+            type=float,
+            default=0.18,
+            metavar="F",
+            help="Maximum vertical padding as a fraction of canvas height (default: 0.18)",
+        )
+        g_vh.add_argument(
+            "--record-metadata",
+            action="store_true",
+            help="Write a metadata.jsonl sidecar (image/text/width/height) per split",
+        )
         g_render.add_argument(
             "--font-mode",
             choices=["random", "all"],
@@ -387,14 +583,48 @@ class GenerationConfig:
             type=int,
             default=42,
             metavar="N",
-            help="Random seed for deterministic train/val splitting",
+            help="Random seed for deterministic train/val/test splitting",
         )
         g_corpus.add_argument(
             "--val-percent",
             type=float,
-            default=10.0,
+            default=None,
             metavar="PCT",
-            help="Validation split percentage [0, 100) (default: 10.0)",
+            help=(
+                "Validation split percentage [0, 100). "
+                "If only this is set, test=0. "
+                "If neither --val-percent nor --test-percent is set, defaults to 10%%."
+            ),
+        )
+        g_corpus.add_argument(
+            "--test-percent",
+            type=float,
+            default=None,
+            metavar="PCT",
+            help=(
+                "Test split percentage [0, 100). "
+                "If only this is set, val=0. "
+                "If neither --val-percent nor --test-percent is set, defaults to 10%%."
+            ),
+        )
+        g_corpus.add_argument(
+            "--split-ratios",
+            nargs=3,
+            type=float,
+            default=None,
+            metavar=("TRAIN", "VAL", "TEST"),
+            help=(
+                "Explicit train/val/test split ratios (three values, e.g. 80 10 10). "
+                "Values are normalised to sum to 1.0. "
+                "Overrides --val-percent and --test-percent. "
+                "Set '100 0 0' to disable splitting entirely."
+            ),
+        )
+        g_corpus.add_argument(
+            "--test-file",
+            default=None,
+            metavar="FILE",
+            help="Path to a separate test corpus file (bypasses automatic test splitting)",
         )
         g_corpus.add_argument(
             "--count-only",
@@ -514,6 +744,23 @@ class GenerationConfig:
             help="DPI rendering strategy (default: native)",
         )
 
+        # ── Rendering style ─────────────────────────────────────────────────
+        g_style = parser.add_argument_group("Rendering style")
+        g_style.add_argument(
+            "--bg-color-mode",
+            choices=["default", "paper_tones", "colored", "dark_mode", "gradient", "random"],
+            default="random",
+            help=(
+                "Background colour palette for rendered images (default: random). "
+                "'default': off-white/light-gray. "
+                "'paper_tones': warm cream, sepia, recycled, blueprint. "
+                "'colored': soft pastels. "
+                "'dark_mode': dark background with light text. "
+                "'gradient': brightness gradient overlay. "
+                "'random': sample across all palettes when augmentation is enabled."
+            ),
+        )
+
         # ── Augmentation methods: prob, min, max per method ────────────────
         g_aug = parser.add_argument_group(
             "Augmentation methods",
@@ -573,6 +820,23 @@ class GenerationConfig:
             image_width=getattr(args, "width", None),
             color_mode=int(getattr(args, "color_mode", 1)),
             random_align_when_padded=bool(getattr(args, "random_align_when_padded", False)),
+            line_height_mode=str(getattr(args, "line_height_mode", "fixed")),
+            min_line_height=int(getattr(args, "min_line_height", 32)),
+            max_line_height=int(getattr(args, "max_line_height", 96)),
+            line_height_step=int(getattr(args, "line_height_step", 8)),
+            line_height_distribution=str(getattr(args, "line_height_distribution", "uniform")),
+            default_line_height=(
+                int(args.default_line_height)
+                if getattr(args, "default_line_height", None) is not None
+                else None
+            ),
+            font_size_mode=str(getattr(args, "font_size_mode", "fixed")),
+            min_font_scale=float(getattr(args, "min_font_scale", 0.65)),
+            max_font_scale=float(getattr(args, "max_font_scale", 0.9)),
+            vertical_padding_mode=str(getattr(args, "vertical_padding_mode", "fixed")),
+            min_vertical_padding_ratio=float(getattr(args, "min_vertical_padding_ratio", 0.04)),
+            max_vertical_padding_ratio=float(getattr(args, "max_vertical_padding_ratio", 0.18)),
+            record_metadata=bool(getattr(args, "record_metadata", False)),
             fonts_dir=str(getattr(args, "fonts", "fonts/")),
             mixed_font_prob=float(getattr(args, "mixed_font_prob", 0.0)),
             font_mode=str(getattr(args, "font_mode", "random")),
@@ -580,7 +844,13 @@ class GenerationConfig:
             min_length=int(getattr(args, "min_length", 1)),
             max_length=int(getattr(args, "max_length", 260)),
             max_lines=int(getattr(args, "lines", 0)),
-            val_percent=float(getattr(args, "val_percent", 10.0)),
+            val_percent=getattr(args, "val_percent", None),
+            test_percent=getattr(args, "test_percent", None),
+            split_ratios=(
+                tuple(args.split_ratios)
+                if getattr(args, "split_ratios", None) is not None
+                else None
+            ),
             seed=int(getattr(args, "seed", 42)),
             corpus_path=str(getattr(args, "corpus", "")),
             output_dir=str(getattr(args, "output", "data")),
@@ -592,6 +862,7 @@ class GenerationConfig:
             jpeg_quality=int(getattr(args, "jpeg_quality", 90)),
             storage=_resolve_storage(args),
             keep_raw=bool(getattr(args, "keep_raw", False)),
+            bg_color_mode=str(getattr(args, "bg_color_mode", "random")),
             workers=int(getattr(args, "workers", 0)),
             worker_timeout=int(getattr(args, "worker_timeout", 300)),
             retry_limit=int(getattr(args, "retry_limit", 10)),

@@ -169,6 +169,23 @@ class TestBackgroundTexture:
         result = apply_background_texture(img, 0.0)
         assert result is not None
 
+    def test_multiple_runs_exercise_all_modes_2d(self):
+        img = _make_test_image(h=64, w=256)
+        for _ in range(50):
+            res = apply_background_texture(img, 0.7)
+            assert res is not None
+            assert res.shape == img.shape
+            assert res.dtype == np.uint8
+
+    def test_multiple_runs_exercise_all_modes_rgb(self):
+        img_2d = _make_test_image(h=64, w=256)
+        img_rgb = np.stack([img_2d] * 3, axis=-1)
+        for _ in range(50):
+            res = apply_background_texture(img_rgb, 0.7)
+            assert res is not None
+            assert res.shape == img_rgb.shape
+            assert res.dtype == np.uint8
+
 
 class TestLowDPI:
     def test_basic(self):
@@ -419,3 +436,48 @@ class TestAnisotropicDilation:
         img = _make_test_image()
         result = apply_anisotropic_dilation(img, 0.9)
         assert result is not None
+
+
+class TestAlbumentationsFailureLogging:
+    """A failing albumentations pipeline must fall back to the input image and
+    log at DEBUG (not raise, not fail silently without a trace)."""
+
+    def test_apply_blur_logs_debug_on_failure(self, monkeypatch, caplog):
+        import logging
+
+        import khocr_gen.augmentation as aug_mod
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(aug_mod.A, "OneOf", _raise)
+        img = _make_test_image()
+
+        with caplog.at_level(logging.DEBUG, logger="khocr_gen.augmentation"):
+            result = apply_blur(img, 0.5)
+
+        np.testing.assert_array_equal(result, img)
+        assert any(
+            "apply_blur" in record.message and record.levelno == logging.DEBUG
+            for record in caplog.records
+        )
+
+    def test_apply_distortion_logs_debug_on_failure(self, monkeypatch, caplog):
+        import logging
+
+        import khocr_gen.augmentation as aug_mod
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(aug_mod.A, "OneOf", _raise)
+        img = _make_test_image()
+
+        with caplog.at_level(logging.DEBUG, logger="khocr_gen.augmentation"):
+            result = apply_distortion(img, 0.5)
+
+        np.testing.assert_array_equal(result, img)
+        assert any(
+            "apply_distortion" in record.message and record.levelno == logging.DEBUG
+            for record in caplog.records
+        )

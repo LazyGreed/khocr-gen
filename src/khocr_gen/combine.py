@@ -2,7 +2,7 @@
 
 Supports n-way merge: `data_1 + data_2 + ... + data_n`.
 
-Each input dataset is a directory containing `train/` and/or `val/` subdirectories,
+Each input dataset is a directory containing `train/`, `val/`, and/or `test/` subdirectories,
 where each split is either "raw" (`labels.txt` + `images/`) or "lmdb" (`lmdb/` subdirectory).
 Inputs may use different formats independently per split; the merged output is always LMDB.
 """
@@ -20,7 +20,7 @@ from .lmdb_pack import pack_lmdb
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-SPLITS: tuple[str, ...] = ("train", "val")
+SPLITS: tuple[str, ...] = ("train", "val", "test")
 
 
 def _detect_split_format(split_dir: Path) -> str | None:
@@ -100,7 +100,7 @@ def combine_datasets(
 ) -> dict[str, int]:
     """Merge multiple datasets into *output_dir*, per split, as LMDB.
 
-    Each dataset root may have either or both of `train/` and `val/`;
+    Each dataset root may have any of `train/`, `val/`, and/or `test/`;
     a split missing from an input is simply skipped.
     A split absent from *all* inputs is skipped entirely.
 

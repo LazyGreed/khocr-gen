@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 
+import pytest
+
 from khocr_gen.config import AugMethodConfig, GenerationConfig
 from khocr_gen.normalizer import NormalizerConfig
 
@@ -251,3 +253,162 @@ class TestAugMethodConfigDictInit:
         assert cfg.geo_warp.prob == 0.2
         assert cfg.geo_warp.min == 0.1
         assert cfg.geo_warp.max == 0.9
+
+
+class TestSplitRatioResolution:
+    """Test resolution of train/val/test split ratios based on user-specified rules."""
+
+    def test_default_ratios_when_neither_specified(self):
+        cfg = GenerationConfig()
+        train, val, test = cfg.resolve_split_ratios()
+        assert pytest.approx(train) == 0.80
+        assert pytest.approx(val) == 0.10
+        assert pytest.approx(test) == 0.10
+
+    def test_only_val_percent_specified_sets_test_to_zero(self):
+        cfg = GenerationConfig(val_percent=15.0)
+        train, val, test = cfg.resolve_split_ratios()
+        assert pytest.approx(train) == 0.85
+        assert pytest.approx(val) == 0.15
+        assert pytest.approx(test) == 0.0
+
+    def test_only_test_percent_specified_sets_val_to_zero(self):
+        cfg = GenerationConfig(test_percent=20.0)
+        train, val, test = cfg.resolve_split_ratios()
+        assert pytest.approx(train) == 0.80
+        assert pytest.approx(val) == 0.0
+        assert pytest.approx(test) == 0.20
+
+    def test_both_val_and_test_percent_specified(self):
+        cfg = GenerationConfig(val_percent=10.0, test_percent=20.0)
+        train, val, test = cfg.resolve_split_ratios()
+        assert pytest.approx(train) == 0.70
+        assert pytest.approx(val) == 0.10
+        assert pytest.approx(test) == 0.20
+
+    def test_split_ratios_explicit_overrides_all(self):
+        cfg = GenerationConfig(val_percent=10.0, test_percent=20.0, split_ratios=(70, 15, 15))
+        train, val, test = cfg.resolve_split_ratios()
+        assert pytest.approx(train) == 0.70
+        assert pytest.approx(val) == 0.15
+        assert pytest.approx(test) == 0.15
+
+    def test_disable_split_via_zeros(self):
+        cfg = GenerationConfig(val_percent=0.0, test_percent=0.0)
+        train, val, test = cfg.resolve_split_ratios()
+        assert pytest.approx(train) == 1.0
+        assert pytest.approx(val) == 0.0
+        assert pytest.approx(test) == 0.0
+
+    def test_disable_split_via_split_ratios(self):
+        cfg = GenerationConfig(split_ratios=(100, 0, 0))
+        train, val, test = cfg.resolve_split_ratios()
+        assert pytest.approx(train) == 1.0
+        assert pytest.approx(val) == 0.0
+        assert pytest.approx(test) == 0.0
+
+    def test_cli_parsing_split_ratios(self):
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        args = parser.parse_args(["--split-ratios", "70", "15", "15"])
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.split_ratios == (70.0, 15.0, 15.0)
+        train, val, test = cfg.resolve_split_ratios()
+        assert pytest.approx(train) == 0.70
+        assert pytest.approx(val) == 0.15
+        assert pytest.approx(test) == 0.15
+
+
+class TestBgColorMode:
+    """Test background color mode configuration and CLI parsing."""
+
+    def test_default_bg_color_mode(self):
+        cfg = GenerationConfig()
+        assert cfg.bg_color_mode == "random"
+
+    def test_cli_parsing_bg_color_mode(self):
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        args = parser.parse_args(["--bg-color-mode", "dark_mode"])
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.bg_color_mode == "dark_mode"
+
+
+class TestVariableLineHeightConfig:
+    def test_defaults_are_fixed_mode(self):
+        cfg = GenerationConfig()
+        assert cfg.line_height_mode == "fixed"
+        assert cfg.font_size_mode == "fixed"
+        assert cfg.vertical_padding_mode == "fixed"
+        assert cfg.record_metadata is False
+
+    def test_cli_parsing_variable_height_flags(self):
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        args = parser.parse_args(
+            [
+                "--line-height-mode",
+                "variable",
+                "--min-line-height",
+                "32",
+                "--max-line-height",
+                "96",
+                "--line-height-step",
+                "8",
+                "--line-height-distribution",
+                "triangular",
+                "--default-line-height",
+                "48",
+                "--font-size-mode",
+                "proportional",
+                "--min-font-scale",
+                "0.6",
+                "--max-font-scale",
+                "0.85",
+                "--vertical-padding-mode",
+                "random",
+                "--min-vertical-padding-ratio",
+                "0.05",
+                "--max-vertical-padding-ratio",
+                "0.2",
+                "--record-metadata",
+            ]
+        )
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.line_height_mode == "variable"
+        assert cfg.min_line_height == 32
+        assert cfg.max_line_height == 96
+        assert cfg.line_height_step == 8
+        assert cfg.line_height_distribution == "triangular"
+        assert cfg.default_line_height == 48
+        assert cfg.font_size_mode == "proportional"
+        assert cfg.min_font_scale == 0.6
+        assert cfg.max_font_scale == 0.85
+        assert cfg.vertical_padding_mode == "random"
+        assert cfg.min_vertical_padding_ratio == 0.05
+        assert cfg.max_vertical_padding_ratio == 0.2
+        assert cfg.record_metadata is True
+
+    def test_default_line_height_defaults_to_none(self):
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        args = parser.parse_args([])
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.default_line_height is None
+
+    def test_to_dict_from_dict_roundtrip(self):
+        cfg = GenerationConfig(
+            line_height_mode="bucketed",
+            min_line_height=24,
+            max_line_height=88,
+            line_height_step=16,
+            font_size_mode="proportional",
+            record_metadata=True,
+        )
+        restored = GenerationConfig.from_dict(cfg.to_dict())
+        assert restored.line_height_mode == "bucketed"
+        assert restored.min_line_height == 24
+        assert restored.max_line_height == 88
+        assert restored.line_height_step == 16
+        assert restored.font_size_mode == "proportional"
+        assert restored.record_metadata is True
