@@ -119,7 +119,7 @@ perspective-prob: 0.3
 perspective-min: 0.1
 perspective-max: 0.9
 
-elastic-prob: 0.2
+elastic-prob: 0.0
 elastic-min: 0.1
 elastic-max: 0.9
 

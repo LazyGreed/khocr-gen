@@ -21,9 +21,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+          # This project intentionally has no uv.lock; key the uv cache from its manifest.
+          cache-dependency-glob: pyproject.toml
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
