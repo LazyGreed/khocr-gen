@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-07-24
+
+### Fixed
+- `apply_hsv` / `apply_brightness_contrast` (Rust acceleration, `rust/src/augmentation.rs`):
+  at `intensity == 0.0` (the MIN-intensity case exercised by `khocr-gen verify`), the sampled
+  `rand::gen_range` bounds collapsed to a single point (e.g. `1.0..1.0` for `hsv`'s saturation/
+  value multiplier, `0.0..0.0` for `brightness_contrast`'s beta offset). `rand` panics on an
+  empty range, and since the crate builds with `panic = "abort"`, this crashed the whole
+  process (SIGABRT) rather than raising a catchable Python exception — `khocr-gen verify`
+  aborted partway through generating comparison images. Both call sites now fall back to the
+  degenerate point directly instead of sampling when the range is empty.
+- `apply_gradient_illumination` (`augmentation.py`): the gradient array was shaped `(1, w)`/
+  `(h, 1)` for grayscale broadcasting, but the method is RGB-preferred and always receives
+  `(h, w, 3)` arrays from the renderer/`verify`, causing a `ValueError` on the multiply that
+  `verify.py` silently swallowed and reported as "failed to apply augmentation; skipping."
+  Added a trailing channel axis so the gradient broadcasts correctly against RGB input.
+- `_wrap_grayscale_rust_fn`'s inner wrapper (`augmentation.py`) was annotated to always return
+  `np.ndarray` but could return `None` (already handled correctly by callers); widened the
+  return type to `np.ndarray | None` to fix a `ty check` diagnostic with no behavior change.
+
 ## [0.1.2] - 2026-07-24
 
 ### Added

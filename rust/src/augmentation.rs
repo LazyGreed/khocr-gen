@@ -620,8 +620,12 @@ pub fn apply_hsv_rgb(img: &[u8], w: usize, h: usize, intensity: f32) -> Vec<u8> 
     let total = w * h;
     let mut rng = rand::thread_rng();
     let factor = 1.0 - intensity * 0.40;
-    let s_mult = rng.gen_range(factor..(2.0 - factor));
-    let v_mult = rng.gen_range(factor..(2.0 - factor));
+    let upper = 2.0 - factor;
+    // At intensity == 0.0, factor == upper == 1.0: the range is a single
+    // point, which rand's gen_range rejects as empty. Fall back to that
+    // point directly rather than sampling.
+    let s_mult = if factor < upper { rng.gen_range(factor..upper) } else { factor };
+    let v_mult = if factor < upper { rng.gen_range(factor..upper) } else { factor };
 
     let mut result = vec![0u8; total * 3];
     result.par_chunks_mut(3).enumerate().for_each(|(i, rgb)| {
@@ -704,7 +708,10 @@ pub fn apply_brightness_contrast(
     let spread = 0.02 + intensity * 0.23;
     let mut rng = rand::thread_rng();
     let alpha = rng.gen_range((1.0 - spread)..(1.0 + spread));
-    let beta = rng.gen_range((-30.0 * intensity)..(30.0 * intensity));
+    // At intensity == 0.0 the beta range collapses to a single point (0.0),
+    // which rand's gen_range rejects as empty; sample only when non-empty.
+    let beta_bound = 30.0 * intensity;
+    let beta = if beta_bound > 0.0 { rng.gen_range(-beta_bound..beta_bound) } else { 0.0 };
 
     img.par_iter()
         .map(|&p| clamp_f32_to_u8(p as f32 * alpha + beta))
@@ -720,7 +727,8 @@ pub fn apply_brightness_contrast_rgb(
     let spread = 0.02 + intensity * 0.23;
     let mut rng = rand::thread_rng();
     let alpha = rng.gen_range((1.0 - spread)..(1.0 + spread));
-    let beta = rng.gen_range((-30.0 * intensity)..(30.0 * intensity));
+    let beta_bound = 30.0 * intensity;
+    let beta = if beta_bound > 0.0 { rng.gen_range(-beta_bound..beta_bound) } else { 0.0 };
 
     img.par_iter()
         .map(|&p| clamp_f32_to_u8(p as f32 * alpha + beta))

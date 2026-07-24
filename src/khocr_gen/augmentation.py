@@ -738,6 +738,11 @@ def apply_gradient_illumination(img: np.ndarray, intensity: float, **kwargs: Any
             gradient = gradient[::-1]
         gradient = gradient[:, np.newaxis]
 
+    if img.ndim == 3:
+        # Add a trailing channel axis so the gradient broadcasts against
+        # (h, w, c) instead of colliding with the channel dimension.
+        gradient = gradient[..., np.newaxis]
+
     return np.clip(img.astype(np.float32) * gradient, 0, 255).astype(np.uint8)
 
 
@@ -874,7 +879,7 @@ def _wrap_grayscale_rust_fn(rust_fn: Any) -> Any:
     (HxW) input is passed straight through.
     """
 
-    def _wrapper(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
+    def _wrapper(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray | None:
         if img.ndim == 3 and img.shape[2] == 3:
             gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             result = rust_fn(np.ascontiguousarray(gray), intensity)
