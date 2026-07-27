@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-07-27
+
+### Fixed
+- `ImageRenderer._render_mixed_font`: spans were vertically positioned by top-aligning each
+  span's ink bounding box (`offset_y = -bbox[1]`) to a shared `y_base`, instead of aligning on
+  a common baseline. Because Khmer glyphs (stacked diacritics, tall consonants) and Latin
+  glyphs have very different ascent-to-ink-top ratios, this left non-Khmer spans floating well
+  above the Khmer baseline in mixed-script lines (e.g. Khmer text with an embedded English
+  word). Spans are now positioned using each font's `getmetrics()` ascent so every span shares
+  the same true baseline, with the canvas still sized from each span's actual ink extent so
+  nothing clips.
+
 ## [0.1.3] - 2026-07-24
 
 ### Fixed

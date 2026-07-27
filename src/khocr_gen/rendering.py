@@ -395,6 +395,7 @@ class ImageRenderer:
         span_texts: list[str] = []
         span_fonts: list[Any] = []
         span_bboxes: list[tuple[int, int, int, int]] = []
+        span_ascents: list[int] = []
         for span_text, script in spans:
             if script == "other" or script == first_script:
                 font = base_font
@@ -422,26 +423,48 @@ class ImageRenderer:
                 except Exception:
                     return None
 
+            try:
+                ascent, _descent = font.getmetrics()
+            except Exception:
+                ascent = bbox[3]
+
             span_texts.append(span_text)
             span_fonts.append(font)
             span_bboxes.append(bbox)
+            span_ascents.append(ascent)
 
         total_text_w = sum(b[2] - b[0] for b in span_bboxes)
-        max_text_h = max((b[3] - b[1]) for b in span_bboxes) if span_bboxes else 0
-        if total_text_w <= 0 or max_text_h <= 0:
+        if total_text_w <= 0:
+            return None
+
+        # Align spans on a shared baseline using each font's ascent metric.
+        # Top-aligning the raw ink bboxes (the old behaviour) breaks down
+        # across scripts: Khmer's stacked diacritics push its bbox top much
+        # higher than Latin's, so a shared bbox-top anchor leaves the Latin
+        # span floating well above the Khmer baseline instead of sitting on it.
+        above_baseline = [
+            max(0, ascent - bbox[1]) for ascent, bbox in zip(span_ascents, span_bboxes, strict=True)
+        ]
+        below_baseline = [
+            max(0, bbox[3] - ascent) for ascent, bbox in zip(span_ascents, span_bboxes, strict=True)
+        ]
+        max_above = max(above_baseline) if above_baseline else 0
+        max_below = max(below_baseline) if below_baseline else 0
+        if max_above + max_below <= 0:
             return None
 
         img_w = total_text_w + padding_x * 2
-        img_h = max_text_h + padding_y * 2
+        img_h = max_above + max_below + padding_y * 2
 
         img = Image.new(self._pil_mode, (img_w, img_h), color=bg_color)
         draw = ImageDraw.Draw(img)
         x = padding_x + (random.randint(-3, 3) if augment else 0)
-        y_base = padding_y + (random.randint(-2, 2) if augment else 0)
+        baseline_y = padding_y + max_above + (random.randint(-2, 2) if augment else 0)
 
-        for span_text, font, bbox in zip(span_texts, span_fonts, span_bboxes, strict=False):
-            offset_y = -bbox[1]
-            draw.text((x, y_base + offset_y), span_text, font=font, fill=text_color)
+        for span_text, font, bbox, ascent in zip(
+            span_texts, span_fonts, span_bboxes, span_ascents, strict=False
+        ):
+            draw.text((x, baseline_y - ascent), span_text, font=font, fill=text_color)
             x += bbox[2] - bbox[0]
 
         return np.array(img), base_font
