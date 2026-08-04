@@ -60,6 +60,13 @@ def run(args: argparse.Namespace) -> int:
         print(f"   Augmented copies      : {args.copies}")
         if args.font_mode == "random":
             print(f"   Estimated images      : {effective * args.copies:>12,}")
+        if getattr(args, "oversample_rare_chars", False):
+            print(
+                "   Rare-char oversampling: enabled "
+                f"(bottom {args.rare_char_percentile:g}% chars, "
+                f"{args.rare_char_multiplier:g}x copies) "
+                "- estimate above does not include this boost"
+            )
         return 0
 
     # Validate inputs
@@ -120,6 +127,9 @@ def run(args: argparse.Namespace) -> int:
             min_length=args.min_length,
             max_length=args.max_length,
             max_lines=args.lines,
+            oversample_rare_chars=getattr(args, "oversample_rare_chars", False),
+            rare_char_percentile=getattr(args, "rare_char_percentile", 5.0),
+            rare_char_multiplier=getattr(args, "rare_char_multiplier", 3.0),
         )
     except FileExistsError as exc:
         print(exc)

@@ -121,6 +121,9 @@ class GenerationConfig:
     test_percent: float | None = None
     split_ratios: tuple[float, float, float] | None = None
     seed: int = 42
+    oversample_rare_chars: bool = False
+    rare_char_percentile: float = 5.0
+    rare_char_multiplier: float = 3.0
 
     # ── Output ─────────────────────────────────────────────────────────────
     output_dir: str = "data"
@@ -632,6 +635,34 @@ class GenerationConfig:
             help="Print filter statistics and estimated image count, then exit",
         )
         g_corpus.add_argument(
+            "--oversample-rare-chars",
+            action="store_true",
+            help=(
+                "Render extra copies of training lines that contain rare characters "
+                "(does not affect val/test, which stay at 1 copy per line)"
+            ),
+        )
+        g_corpus.add_argument(
+            "--rare-char-percentile",
+            type=float,
+            default=5.0,
+            metavar="PCT",
+            help=(
+                "Least-frequent PCT%% of distinct characters in the corpus are "
+                "considered rare (default: 5.0)"
+            ),
+        )
+        g_corpus.add_argument(
+            "--rare-char-multiplier",
+            type=float,
+            default=3.0,
+            metavar="F",
+            help=(
+                "Copies multiplier applied to training lines containing a rare "
+                "character (default: 3.0)"
+            ),
+        )
+        g_corpus.add_argument(
             "--image-dir",
             default=None,
             metavar="DIR",
@@ -798,13 +829,20 @@ class GenerationConfig:
         """Build a ``GenerationConfig`` from parsed CLI arguments."""
 
         # Build AugMethodConfig per method from CLI flags (or use defaults)
+        # NOTE: argparse derives `dest` from the option string by replacing
+        # "-" with "_", so the attribute name IS the lookup key (e.g.
+        # --background-texture-min -> dest "background_texture_min"). Do NOT
+        # dash-ify attr_name here: doing so previously produced lookup keys
+        # like "background-texture_min", which never matched any argparse
+        # dest (Python identifiers can't contain "-"), so getattr() always
+        # returned None and every multi-word method silently fell back to
+        # its dataclass default regardless of CLI/YAML configuration.
         defaults = cls()
         aug_kwargs: dict[str, AugMethodConfig] = {}
         for attr_name, _ in cls._AUG_METHODS:
-            cli_key = attr_name.replace("_", "-")
-            prob = getattr(args, f"{cli_key}_prob", None)
-            v_min = getattr(args, f"{cli_key}_min", None)
-            v_max = getattr(args, f"{cli_key}_max", None)
+            prob = getattr(args, f"{attr_name}_prob", None)
+            v_min = getattr(args, f"{attr_name}_min", None)
+            v_max = getattr(args, f"{attr_name}_max", None)
 
             default: AugMethodConfig = getattr(defaults, attr_name)
             aug_kwargs[attr_name] = AugMethodConfig(
@@ -852,6 +890,9 @@ class GenerationConfig:
                 else None
             ),
             seed=int(getattr(args, "seed", 42)),
+            oversample_rare_chars=bool(getattr(args, "oversample_rare_chars", False)),
+            rare_char_percentile=float(getattr(args, "rare_char_percentile", 5.0)),
+            rare_char_multiplier=float(getattr(args, "rare_char_multiplier", 3.0)),
             corpus_path=str(getattr(args, "corpus", "")),
             output_dir=str(getattr(args, "output", "data")),
             vocab_path=str(getattr(args, "vocab", "")),

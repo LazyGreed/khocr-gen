@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-08-04
+
+### Added
+- Rare-character oversampling for training splits: `--oversample-rare-chars` renders extra
+  copies of corpus lines that contain infrequently-seen characters, so the model sees enough
+  examples of them despite `--copies` otherwise applying uniform multiplicity to every line.
+  `--rare-char-percentile` (default 5.0) sets what counts as rare — the least-frequent N% of
+  distinct characters in the corpus, by character type not occurrence count.
+  `--rare-char-multiplier` (default 3.0) sets the copies multiplier applied to a line
+  containing at least one rare character. Only affects the train split; val/test stay at
+  uniform `copies` so evaluation reflects natural corpus frequency. New `corpus.py` helpers
+  `char_frequencies()` and `rare_chars_from_frequencies()`.
+
+## [0.1.5] - 2026-07-27
+
+### Fixed
+- `GenerationConfig.from_args()` (`config.py`): CLI/YAML overrides for every multi-word
+  augmentation method's `--<name>-prob`/`--<name>-min`/`--<name>-max` flags (`geo_warp`,
+  `vertical_crop`, `albu_noise`, `jpeg_compression`, `salt_pepper`, `background_texture`,
+  `random_crop`, `online_blur`, `online_noise`, `brightness_contrast`,
+  `gradient_illumination`, `anisotropic_dilation`) were silently ignored. The lookup built its
+  `getattr` key by re-dashing `attr_name` (e.g. `background-texture_min`), but argparse's
+  `dest` for `--background-texture-min` is the underscored `background_texture_min` — a dash
+  can never appear in a real attribute name, so the lookup always missed and fell back to the
+  `AugMethodConfig` dataclass default regardless of what was configured in `generate.yml` or
+  passed on the CLI. Single-word methods (`sauvola`, `blur`, `rotation`, etc.) were unaffected.
+  Added a regression test (`test_from_args_parses_multi_word_aug_method`) covering a
+  multi-word method name.
+
 ## [0.1.4] - 2026-07-27
 
 ### Fixed

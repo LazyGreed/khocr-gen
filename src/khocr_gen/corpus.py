@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import os
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -230,3 +231,49 @@ def count_corpus(
         return _count_corpus_serial(path, min_length, max_length, normalizer)
 
     return stats
+
+
+def char_frequencies(
+    path: str | Path,
+    min_length: int = 1,
+    max_length: int = 260,
+    max_lines: int = 0,
+    normalizer: NormalizerConfig | None = None,
+) -> Counter[str]:
+    """Count character occurrences across the filtered, normalized corpus.
+
+    Used to identify rare characters for oversampling: lines that contain
+    infrequently-seen characters can be rendered more often so the model
+    sees enough examples of them.
+    """
+    freq: Counter[str] = Counter()
+    for line in load_corpus(
+        path,
+        min_length=min_length,
+        max_length=max_length,
+        max_lines=max_lines,
+        normalizer=normalizer,
+    ):
+        freq.update(line)
+    return freq
+
+
+def rare_chars_from_frequencies(freq: Counter[str], percentile: float) -> set[str]:
+    """Return the least-frequent *percentile* percent of distinct characters in *freq*.
+
+    Args:
+        freq: Character occurrence counts, e.g. from :func:`char_frequencies`.
+        percentile: Value in (0, 100]. 5.0 selects the least-frequent 5% of
+            distinct characters seen in the corpus (by character type, not
+            by occurrence count).
+
+    Returns:
+        The set of characters considered "rare". Empty if *freq* is empty
+        or *percentile* is 0.
+    """
+    if not freq or percentile <= 0:
+        return set()
+    percentile = min(100.0, percentile)
+    ordered = sorted(freq.items(), key=lambda kv: kv[1])
+    cutoff = max(1, round(len(ordered) * percentile / 100.0))
+    return {ch for ch, _ in ordered[:cutoff]}

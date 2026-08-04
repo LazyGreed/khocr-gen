@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "khocr-gen"
-version = "0.1.4"
+version = "0.1.6"
 description = "Synthetic OCR training data generator for mixed Khmer/English text"
 readme = "README.pypi.md"
 license = "MIT"
@@ -22,16 +22,10 @@ keywords = [
     "image-generation",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Image Recognition",
-    "Topic :: Text Processing :: Fonts",
 ]
 
 dependencies = [

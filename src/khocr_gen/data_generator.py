@@ -19,7 +19,7 @@ import cv2
 from tqdm import tqdm
 
 from .augmentation import write_output_image
-from .corpus import load_corpus
+from .corpus import char_frequencies, load_corpus, rare_chars_from_frequencies
 from .fonts import FontManager
 from .parallel import (
     _init_render_worker,
@@ -134,6 +134,25 @@ class DatasetGenerator:
                 train_lines.extend(buckets[text])
 
         return train_lines, val_lines, test_lines
+
+    @staticmethod
+    def _copies_for_line(
+        text: str,
+        copies: int,
+        rare_chars: set[str] | None,
+        rare_char_multiplier: float,
+    ) -> int:
+        """Boost *copies* for lines containing a rare character.
+
+        Lines with no rare character are unaffected. Multiplier is only
+        applied (and only ever increases copies) when rendering random-font
+        training samples; val/test always pass ``rare_chars=None``.
+        """
+        if not rare_chars or rare_char_multiplier <= 1.0:
+            return copies
+        if any(ch in rare_chars for ch in text):
+            return max(copies, round(copies * rare_char_multiplier))
+        return copies
 
     @staticmethod
     def _write_lines(path: Path, lines: list) -> None:
@@ -450,8 +469,16 @@ class DatasetGenerator:
         workers: int = 0,
         image_dir: str | None = None,
         copies: int = 3,
+        rare_chars: set[str] | None = None,
+        rare_char_multiplier: float = 1.0,
     ) -> int:
-        """Generate one split (train or val) from *text_file*."""
+        """Generate one split (train or val) from *text_file*.
+
+        *rare_chars*/*rare_char_multiplier* boost the per-line copy count for
+        lines containing a rare character; pass ``rare_chars=None`` (the
+        default) for splits that should stay at a uniform ``copies`` per line
+        (e.g. val/test).
+        """
         output_dir = Path(output_dir)
 
         lines = self._read_non_empty_lines(text_file, image_dir=image_dir)
@@ -464,7 +491,8 @@ class DatasetGenerator:
             print("  Using EXISTING IMAGES mode (retry limit ignored)")
             for item in lines:
                 filename, text = item
-                for _ in range(copies):
+                n = self._copies_for_line(text, copies, rare_chars, rare_char_multiplier)
+                for _ in range(n):
                     samples.append((text, filename))
         elif font_mode == "all":
             print("  Using ALL fonts mode")
@@ -477,7 +505,8 @@ class DatasetGenerator:
         else:
             print(f"  Using RANDOM fonts mode (retry limit: {retry_limit} attempts per sample)")
             for line in cast("list[str]", lines):
-                for _ in range(copies):
+                n = self._copies_for_line(line, copies, rare_chars, rare_char_multiplier)
+                for _ in range(n):
                     samples.append((line, None))
 
         if not samples:
@@ -537,8 +566,16 @@ class DatasetGenerator:
         min_length: int = 5,
         max_length: int = 120,
         max_lines: int = 0,
+        oversample_rare_chars: bool = False,
+        rare_char_percentile: float = 5.0,
+        rare_char_multiplier: float = 3.0,
     ) -> dict[str, int]:
         """Generate a complete dataset with train/val/test splits.
+
+        When *oversample_rare_chars* is set, training lines containing one of
+        the least-frequent *rare_char_percentile* percent of characters in
+        the corpus get their copy count multiplied by *rare_char_multiplier*
+        (val/test stay uniform, so evaluation reflects natural frequency).
 
         Returns a dict of split -> sample count.
         """
@@ -596,6 +633,22 @@ class DatasetGenerator:
 
         counts: dict[str, int] = {}
 
+        rare_chars: set[str] | None = None
+        if oversample_rare_chars:
+            freq = char_frequencies(
+                corpus_path,
+                min_length=min_length,
+                max_length=max_length,
+                max_lines=max_lines,
+                normalizer=self._cfg.normalizer,
+            )
+            rare_chars = rare_chars_from_frequencies(freq, percentile=rare_char_percentile)
+            print(
+                f"  Rare-char oversampling: {len(rare_chars)} rare char(s) "
+                f"(bottom {rare_char_percentile:g}% of {len(freq)} distinct chars), "
+                f"{rare_char_multiplier:g}x copies for lines containing one (train only)"
+            )
+
         if val_file and Path(val_file).exists():
             print("\nGenerating TRAINING set...")
             counts["train"] = self.generate_split(
@@ -608,6 +661,8 @@ class DatasetGenerator:
                 workers=workers,
                 image_dir=image_dir,
                 copies=copies,
+                rare_chars=rare_chars,
+                rare_char_multiplier=rare_char_multiplier,
             )
 
             print("\nGenerating VALIDATION set (from separate file)...")
@@ -707,6 +762,8 @@ class DatasetGenerator:
                         workers=workers,
                         image_dir=image_dir,
                         copies=copies,
+                        rare_chars=rare_chars,
+                        rare_char_multiplier=rare_char_multiplier,
                     )
 
                     if val_lines:

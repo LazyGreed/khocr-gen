@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -16,8 +17,10 @@ from khocr_gen.corpus import (
     _count_corpus_serial,
     _empty_stats,
     _merge_stats,
+    char_frequencies,
     count_corpus,
     load_corpus,
+    rare_chars_from_frequencies,
 )
 from khocr_gen.errors import InputValidationError
 
@@ -246,3 +249,76 @@ class TestThreeWayDisjointSplit:
         assert len(train) == 4
         assert len(val) == 0
         assert len(test) == 0
+
+
+class TestCharFrequencies:
+    def test_counts_characters_across_filtered_lines(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("aab\nabc\n")
+            tmp = Path(f.name)
+        try:
+            freq = char_frequencies(tmp, min_length=1, max_length=100)
+            assert freq["a"] == 3
+            assert freq["b"] == 2
+            assert freq["c"] == 1
+        finally:
+            tmp.unlink()
+
+    def test_excludes_lines_filtered_by_length(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("z\nlonger_line\n")
+            tmp = Path(f.name)
+        try:
+            freq = char_frequencies(tmp, min_length=5, max_length=100)
+            assert "z" not in freq
+            assert freq["l"] == 2
+        finally:
+            tmp.unlink()
+
+
+class TestRareCharsFromFrequencies:
+    def test_selects_bottom_percentile_by_char_type(self):
+        # 20 distinct chars, frequencies 1..20 -> bottom 10% = 2 rarest chars
+        freq = Counter({chr(ord("a") + i): i + 1 for i in range(20)})
+        rare = rare_chars_from_frequencies(freq, percentile=10.0)
+        assert rare == {"a", "b"}
+
+    def test_zero_percentile_returns_empty(self):
+        freq = Counter({"a": 5, "b": 1})
+        assert rare_chars_from_frequencies(freq, percentile=0.0) == set()
+
+    def test_empty_frequencies_returns_empty(self):
+        assert rare_chars_from_frequencies(Counter(), percentile=5.0) == set()
+
+    def test_always_selects_at_least_one_char_when_nonzero_percentile(self):
+        freq = Counter({"a": 1, "b": 100})
+        rare = rare_chars_from_frequencies(freq, percentile=1.0)
+        assert rare == {"a"}
+
+    def test_percentile_above_100_clamped(self):
+        freq = Counter({"a": 1, "b": 2})
+        assert rare_chars_from_frequencies(freq, percentile=500.0) == {"a", "b"}
+
+
+class TestCopiesForLine:
+    def test_no_rare_chars_returns_base_copies(self):
+        from khocr_gen.data_generator import DatasetGenerator
+
+        assert DatasetGenerator._copies_for_line("hello", 3, None, 3.0) == 3
+
+    def test_multiplier_at_or_below_one_returns_base_copies(self):
+        from khocr_gen.data_generator import DatasetGenerator
+
+        assert DatasetGenerator._copies_for_line("hello", 3, {"h"}, 1.0) == 3
+
+    def test_line_with_rare_char_gets_multiplied(self):
+        from khocr_gen.data_generator import DatasetGenerator
+
+        assert DatasetGenerator._copies_for_line("hello", 3, {"z"}, 3.0) == 3
+        assert DatasetGenerator._copies_for_line("hzllo", 3, {"z"}, 3.0) == 9
+
+    def test_multiplier_result_never_below_base_copies(self):
+        from khocr_gen.data_generator import DatasetGenerator
+
+        # round(1 * 1.2) == 1, still >= copies via max()
+        assert DatasetGenerator._copies_for_line("z", 1, {"z"}, 1.2) >= 1

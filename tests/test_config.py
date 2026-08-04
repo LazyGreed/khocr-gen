@@ -183,6 +183,40 @@ class TestGenerationConfigAddArgs:
         assert cfg.blur.min == 0.1
         assert cfg.blur.max == 0.9
 
+    def test_from_args_parses_multi_word_aug_method(self):
+        """Regression test: multi-word method names (e.g. background_texture)
+        must have their CLI --<name>-prob/-min/-max flags applied.
+
+        argparse derives `dest` from the option string by replacing "-" with
+        "_", so the dest for --background-texture-min is the underscored
+        attr_name itself ("background_texture_min"); from_args() must look
+        up that exact name rather than re-dashing attr_name (which produces
+        a lookup key like "background-texture_min" that can never match any
+        argparse dest and silently falls back to the dataclass default).
+        """
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        args = parser.parse_args(
+            [
+                "--background-texture-prob",
+                "0.9",
+                "--background-texture-min",
+                "0.2",
+                "--background-texture-max",
+                "0.6",
+                "--salt-pepper-min",
+                "0.3",
+                "--salt-pepper-max",
+                "0.5",
+            ]
+        )
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.background_texture.prob == 0.9
+        assert cfg.background_texture.min == 0.2
+        assert cfg.background_texture.max == 0.6
+        assert cfg.salt_pepper.min == 0.3
+        assert cfg.salt_pepper.max == 0.5
+
     def test_from_args_defaults_uses_code_defaults(self):
         parser = argparse.ArgumentParser()
         GenerationConfig.add_args(parser)
@@ -190,6 +224,32 @@ class TestGenerationConfigAddArgs:
         cfg = GenerationConfig.from_args(args)
         # from_args uses code defaults (not all-zero), so some methods are enabled
         assert len(cfg.enabled_aug_methods()) > 0
+
+    def test_from_args_parses_oversample_rare_chars(self):
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        args = parser.parse_args(
+            [
+                "--oversample-rare-chars",
+                "--rare-char-percentile",
+                "10",
+                "--rare-char-multiplier",
+                "4",
+            ]
+        )
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.oversample_rare_chars is True
+        assert cfg.rare_char_percentile == 10.0
+        assert cfg.rare_char_multiplier == 4.0
+
+    def test_from_args_oversample_rare_chars_defaults_off(self):
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        args = parser.parse_args([])
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.oversample_rare_chars is False
+        assert cfg.rare_char_percentile == 5.0
+        assert cfg.rare_char_multiplier == 3.0
 
     def test_from_args_parses_color_mode(self):
         parser = argparse.ArgumentParser()
