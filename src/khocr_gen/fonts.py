@@ -37,6 +37,7 @@ class FontManager:
         self.english_fonts: list[tuple[str, int, Any]] = []
         self.all_fonts: list[tuple[str, int, Any]] = []
         self._font_lookup: dict[tuple[str, int], Any] = {}
+        self._font_styles: dict[str, set[str]] = {}
         self._text_has_khmer_cache: dict[str, bool] = {}
         self._load_fonts()
 
@@ -130,15 +131,72 @@ class FontManager:
         self._text_has_khmer_cache[text] = result
         return result
 
-    def get_random_font(self, text: str) -> Any:
-        """Get a random font appropriate for *text*."""
+    def _pool_for(self, text: str) -> list:
+        """Return the script-appropriate font-entry pool for *text*."""
         has_khmer = self._text_has_khmer(text)
         if has_khmer and self.khmer_fonts:
-            pool = self.khmer_fonts
-        elif not has_khmer and self.english_fonts:
-            pool = self.english_fonts
-        else:
-            pool = self.all_fonts
+            return self.khmer_fonts
+        if not has_khmer and self.english_fonts:
+            return self.english_fonts
+        return self.all_fonts
+
+    @staticmethod
+    def _detect_font_style(font_path: str) -> set[str]:
+        """Detect bold/italic style tags for a font file from its name + filename."""
+        tags: set[str] = set()
+        stem = Path(font_path).stem.lower()
+        if "bold" in stem:
+            tags.add("bold")
+        if "italic" in stem or "oblique" in stem:
+            tags.add("italic")
+        try:
+            style = ImageFont.truetype(font_path, 28).getname()[1].lower()
+            if "bold" in style:
+                tags.add("bold")
+            if "italic" in style or "oblique" in style:
+                tags.add("italic")
+        except Exception:
+            pass
+        return tags
+
+    def _style_tags(self, font_path: str) -> set[str]:
+        """Cached style tags for a font path (see `_detect_font_style`)."""
+        tags = self._font_styles.get(font_path)
+        if tags is None:
+            tags = self._detect_font_style(font_path)
+            self._font_styles[font_path] = tags
+        return tags
+
+    def random_font_path_with_style(self, text: str, styles: set[str]) -> str | None:
+        """Random font *path* from the script-appropriate pool whose style matches *styles*.
+
+        - ``{"bold"}`` -> any font tagged bold (a bold-italic font qualifies).
+        - ``{"italic"}`` -> any font tagged italic/oblique.
+        - ``{"bold", "italic"}`` -> prefer a font tagged both, else a bold font.
+        Returns ``None`` when no match exists.
+        """
+        if not styles:
+            return None
+        pool = self._pool_for(text)
+
+        def _paths(required: set[str]) -> list[str]:
+            return sorted({entry[0] for entry in pool if required <= self._style_tags(entry[0])})
+
+        if styles == {"bold", "italic"}:
+            both = _paths({"bold", "italic"})
+            if both:
+                return random.choice(both)
+            bold = _paths({"bold"})
+            if bold:
+                return random.choice(bold)
+            return None
+
+        matches = _paths(styles)
+        return random.choice(matches) if matches else None
+
+    def get_random_font(self, text: str) -> Any:
+        """Get a random font appropriate for *text*."""
+        pool = self._pool_for(text)
         if not pool:
             return None
         _, _, font = random.choice(pool)

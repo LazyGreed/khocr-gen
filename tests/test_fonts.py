@@ -7,6 +7,10 @@ aspects of FontManager.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from khocr_gen.fonts import FontManager
 
 
@@ -131,3 +135,46 @@ class TestFontManagerCollectFontFiles:
         (sub / "b.ttf").touch()
         files = FontManager._collect_font_files(tmp_path)
         assert len(files) == 2
+
+
+_PROJECT_FONTS_DIR = Path(__file__).resolve().parent.parent / "fonts"
+_HAS_REAL_FONTS = (_PROJECT_FONTS_DIR / "khmer").is_dir() and any(
+    (_PROJECT_FONTS_DIR / "khmer").iterdir()
+)
+
+
+class TestFontStyleDetection:
+    def test_style_tags_from_filename(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        fm = FontManager(fonts_dir=str(tmp_path / "fonts"))
+        assert "bold" in fm._style_tags("/tmp/Fake-Bold.ttf")
+        assert "italic" in fm._style_tags("/tmp/Fake-Italic.ttf")
+        assert {"bold", "italic"} <= fm._style_tags("/tmp/Fake-BoldItalic.ttf")
+        assert fm._style_tags("/tmp/Fake-Regular.ttf") == set()
+
+    def test_random_font_path_with_style_empty_pool_returns_none(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        fm = FontManager(fonts_dir=str(tmp_path / "fonts"))
+        assert fm.random_font_path_with_style("Hello", {"bold"}) is None
+
+
+@pytest.mark.skipif(not _HAS_REAL_FONTS, reason="real fonts not available")
+class TestFontStyleWithRealFonts:
+    def test_random_bold_path_is_bold(self):
+        fm = FontManager(fonts_dir=str(_PROJECT_FONTS_DIR))
+        path = fm.random_font_path_with_style("Hello World", {"bold"})
+        assert path is not None
+        assert "bold" in fm._style_tags(path)
+
+    def test_random_italic_path_is_italic(self):
+        fm = FontManager(fonts_dir=str(_PROJECT_FONTS_DIR))
+        path = fm.random_font_path_with_style("Hello World", {"italic"})
+        assert path is not None
+        assert "italic" in fm._style_tags(path)
+
+    def test_random_bold_italic_prefers_dual_variant(self):
+        fm = FontManager(fonts_dir=str(_PROJECT_FONTS_DIR))
+        for _ in range(20):
+            path = fm.random_font_path_with_style("Hello World", {"bold", "italic"})
+            assert path is not None
+            assert {"bold", "italic"} <= fm._style_tags(path)
