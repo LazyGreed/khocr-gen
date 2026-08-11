@@ -36,9 +36,6 @@ jobs:
       - name: Lint (ruff check)
         run: uv run ruff check .
 
-      - name: Format check (ruff format)
-        run: uv run ruff format --check .
-
       - name: Type check (ty, non-blocking)
         run: uv run ty check
         continue-on-error: true

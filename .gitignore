@@ -1,11 +1,14 @@
-/.pytest_cache
-/.ruff_cache
-/.venv
-/rust/target/
-/dist
-/corpus
-/fonts
-/data
+/.pytest_cache/
+/.ruff_cache/
+/.venv/
+/.superpowers/
 
-__pycache__
+/rust/target/
+/dist/
+/corpus/
+/fonts/
+/data/
+/docs/superpowers/
+
+__pycache__/
 uv.lock
