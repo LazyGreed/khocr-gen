@@ -7,6 +7,7 @@ then for each enabled augmentation method a copy of the clean canvas is produced
 from __future__ import annotations
 
 import random
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import cv2
@@ -45,6 +46,29 @@ class _BoundedCache(dict):
                         super().pop(oldest, None)
             self._keys.append(key)
         super().__setitem__(key, value)
+
+
+@dataclass
+class DecorStyle:
+    """Per-line decoration state sampled before rendering."""
+
+    bold: bool = False
+    italic: bool = False
+    underline: bool = False
+    color: bool = False  # request a single random line color (RGB mode only)
+    sub_indices: list[int] = field(default_factory=list)
+    super_indices: list[int] = field(default_factory=list)
+
+    @property
+    def active(self) -> bool:
+        return (
+            self.bold
+            or self.italic
+            or self.underline
+            or self.color
+            or bool(self.sub_indices)
+            or bool(self.super_indices)
+        )
 
 
 class ImageRenderer:
@@ -296,6 +320,29 @@ class ImageRenderer:
         return random.randint(235, 255), random.randint(0, 30)
 
     # ── Text base rendering ─────────────────────────────────────────────────
+
+    def _sample_decorations(self, text: str) -> DecorStyle:
+        """Sample a per-line decoration state from ``cfg.text_deco`` probabilities."""
+        deco = self._cfg.text_deco
+        style = DecorStyle()
+        if not deco.enabled or not text:
+            return style
+
+        style.bold = random.random() < deco.bold_prob
+        style.italic = random.random() < deco.italic_prob
+        style.underline = random.random() < deco.underline_prob
+        if self.color_mode == 3:
+            style.color = random.random() < deco.color_prob
+
+        candidates = [i for i, ch in enumerate(text) if ch.isascii() and ch.isalnum()]
+        if candidates:
+            if random.random() < deco.subscript_prob:
+                style.sub_indices = random.sample(candidates, min(2, len(candidates)))
+                chosen = set(style.sub_indices)
+                candidates = [i for i in candidates if i not in chosen]
+            if candidates and random.random() < deco.superscript_prob:
+                style.super_indices = random.sample(candidates, min(2, len(candidates)))
+        return style
 
     def _render_clean_canvas(
         self,
