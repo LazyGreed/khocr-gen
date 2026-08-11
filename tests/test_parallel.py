@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 
+import pytest
+
+from khocr_gen.config import GenerationConfig, TextDecorationConfig
 from khocr_gen.parallel import (
+    _init_render_worker,
+    _render_sample_batch,
     resolve_chunk_size,
     resolve_mp_context,
     resolve_worker_count,
 )
+
+_FONTS_DIR = Path(__file__).resolve().parent.parent / "fonts"
+_HAS_REAL_FONTS = (_FONTS_DIR / "khmer").is_dir() and any((_FONTS_DIR / "khmer").iterdir())
 
 
 class TestResolveWorkerCount:
@@ -111,3 +121,31 @@ class TestResolveMpContext:
         monkeypatch.setenv("KHOCR_GEN_MP_START_METHOD", "")
         _ctx, name = resolve_mp_context()
         assert name in ("fork", "spawn")
+
+
+@pytest.mark.skipif(not _HAS_REAL_FONTS, reason="real fonts not available")
+class TestParallelWorkerRecordMetadata:
+    def test_worker_record_includes_decorations(self, tmp_path):
+        """Parallel worker sidecar records carry the `decorations` key (spec parity)."""
+        cfg = GenerationConfig(
+            fonts_dir=str(_FONTS_DIR), text_deco=TextDecorationConfig(underline_prob=1.0)
+        )
+        _init_render_worker(
+            {
+                **cfg.to_dict(),
+                "split_name": "train",
+                "output_images_dir": str(tmp_path),
+                "font_mode": "random",
+                "retry_limit": 3,
+                "record_metadata": True,
+                "output_format": "jpg",
+                "jpeg_quality": 90,
+            }
+        )
+        _labels, _attempted, success_count, _errors, meta_lines, _heights = _render_sample_batch(
+            [(0, "Hello", None)]
+        )
+        assert success_count == 1
+        assert len(meta_lines) == 1
+        record = json.loads(meta_lines[0])
+        assert "underline" in record["decorations"]

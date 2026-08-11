@@ -169,6 +169,21 @@ class TestRenderDecorated:
         result = self._decorated(r, "Hello", DecorStyle(underline=True))
         assert result is None  # swallowed by _render_decorated, never raised
 
+    def test_italic_dropped_when_boldonly_fallback(self, monkeypatch):
+        """bold+italic request falling back to a bold-only font clears `italic`."""
+        r = self._renderer()
+        fm = r.font_manager
+        path = fm.get_random_font("Hello").path
+        monkeypatch.setattr(fm, "random_font_path_with_style", lambda text, styles: path)
+        monkeypatch.setattr(
+            fm, "_style_tags", lambda p: {"bold"} if p == path else {"bold", "italic"}
+        )
+        style = DecorStyle(bold=True, italic=True)
+        result = self._decorated(r, "Hello", style)
+        assert result is not None
+        assert style.bold is True
+        assert style.italic is False
+
 
 @pytest.mark.skipif(not _HAS_REAL_FONTS, reason="real fonts not available")
 class TestDecoratedCleanRender:

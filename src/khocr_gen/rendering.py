@@ -475,6 +475,14 @@ class ImageRenderer:
                 variant = self.font_manager.get_font_by_path_and_size(path, size)
             if variant is not None and self._is_text_supported(variant, text):
                 font = variant
+                # A variant may satisfy only part of the request (e.g. bold-only
+                # fallback when bold+italic was requested): drop the styles the
+                # chosen font does not actually carry so metadata stays truthful.
+                chosen = self.font_manager._style_tags(path)
+                if style.bold and "bold" not in chosen:
+                    style.bold = False
+                if style.italic and "italic" not in chosen:
+                    style.italic = False
             else:
                 style.bold = False
                 style.italic = False
