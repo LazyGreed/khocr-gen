@@ -24,6 +24,14 @@ min-vertical-padding-ratio: 0.04
 max-vertical-padding-ratio: 0.18
 record-metadata: true                 # write metadata.jsonl per split
 
+# Text decoration (all optional; default 0 = disabled, each a probability in [0, 1])
+text-deco-color-prob: 0.0             # random line color (RGB only; needs color-mode: 3)
+text-deco-underline-prob: 0.0         # underline the whole line
+text-deco-subscript-prob: 0.0         # lower 1-2 random ASCII chars
+text-deco-superscript-prob: 0.0       # raise 1-2 random ASCII chars
+text-deco-italic-prob: 0.0            # italic via real italic/oblique variant font
+text-deco-bold-prob: 0.0              # bold via real bold variant font
+
 # Corpus
 corpus: corpus/corpus.txt
 min-length: 1
