@@ -168,3 +168,71 @@ class TestRenderDecorated:
         monkeypatch.setattr(r, "_render_decorated_impl", _boom)
         result = self._decorated(r, "Hello", DecorStyle(underline=True))
         assert result is None  # swallowed by _render_decorated, never raised
+
+
+@pytest.mark.skipif(not _HAS_REAL_FONTS, reason="real fonts not available")
+class TestDecoratedCleanRender:
+    def test_render_clean_routes_to_decorated(self):
+        cfg = GenerationConfig(text_deco=TextDecorationConfig(underline_prob=1.0))
+        fm = FontManager(fonts_dir=str(_FONTS_DIR))
+        r = ImageRenderer(fm, cfg)
+        random.seed(0)
+        result = r._render_clean("Hello", False, None, 3)
+        assert result is not None
+        _, _, meta = result
+        assert "decorations" in meta
+        assert "underline" in meta["decorations"]
+
+    def test_specific_font_skips_decorations(self):
+        fm = FontManager(fonts_dir=str(_FONTS_DIR))
+        cfg = GenerationConfig(text_deco=TextDecorationConfig(underline_prob=1.0))
+        r = ImageRenderer(fm, cfg)
+        random.seed(0)
+        font = fm.get_random_font("Hello")
+        ref = (font.path, font.size)
+        result = r._render_clean("Hello", False, ref, 3)
+        assert result is not None
+        _, _, meta = result
+        assert "decorations" not in meta
+
+    def test_render_with_one_augmentation_meta_carries_decorations(self):
+        from khocr_gen.config import AugMethodConfig
+
+        cfg = GenerationConfig(
+            text_deco=TextDecorationConfig(underline_prob=1.0), bg_color_mode="default"
+        )
+        fm = FontManager(fonts_dir=str(_FONTS_DIR))
+        r = ImageRenderer(fm, cfg)
+        enabled = [("blur", AugMethodConfig(prob=1.0, min=0.1, max=0.3))]
+        random.seed(0)
+        result = r.render_with_one_augmentation("Hello", enabled, retry_limit=3)
+        assert result is not None
+        _, _, meta = result
+        assert meta.get("decorations") == ["underline"]
+
+    def test_decorated_line_skips_mixed_font(self, monkeypatch):
+        cfg = GenerationConfig(
+            text_deco=TextDecorationConfig(underline_prob=1.0), mixed_font_prob=1.0
+        )
+        fm = FontManager(fonts_dir=str(_FONTS_DIR))
+        r = ImageRenderer(fm, cfg)
+
+        def _boom(*args, **kwargs):
+            raise AssertionError("mixed-font must not be used for decorated lines")
+
+        monkeypatch.setattr(r, "_render_mixed_font", _boom)
+        random.seed(0)
+        img = r.render("Hello សួស្តី", augment=False)
+        assert img is not None
+
+    def test_decorated_failure_falls_back_to_clean(self, monkeypatch):
+        cfg = GenerationConfig(text_deco=TextDecorationConfig(underline_prob=1.0))
+        fm = FontManager(fonts_dir=str(_FONTS_DIR))
+        r = ImageRenderer(fm, cfg)
+        # Simulate a decoration failure: _render_decorated returns None.
+        monkeypatch.setattr(r, "_render_decorated", lambda *a, **k: None)
+        random.seed(0)
+        result = r._render_clean("Hello", False, None, 3)
+        assert result is not None
+        _, _, meta = result
+        assert "decorations" not in meta  # fell back to the clean-canvas path

@@ -315,6 +315,7 @@ class DatasetGenerator:
                                 "height": int(img.shape[0]),
                                 "font": meta.get("font"),
                                 "font_size": meta.get("font_size"),
+                                "decorations": meta.get("decorations"),
                             }
                             meta_file.write(json.dumps(record, ensure_ascii=False) + "\n")
                         success_count += 1

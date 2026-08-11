@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from khocr_gen.config import GenerationConfig
+from khocr_gen.config import GenerationConfig, TextDecorationConfig
 from khocr_gen.data_generator import DatasetGenerator
 
 _FONTS_DIR = Path(__file__).resolve().parent.parent / "fonts"
@@ -220,3 +220,35 @@ class TestVariableHeightGenerateSplit:
             text_file=text_file, output_dir=output_dir, split_name="train", copies=1, workers=1
         )
         assert not (output_dir / "metadata.jsonl").exists()
+
+
+class TestMetadataRecordDecorations:
+    @pytest.mark.skipif(not _HAS_REAL_FONTS, reason="real fonts not available")
+    def test_metadata_sidecar_records_decorations(self, tmp_path):
+        text_file = tmp_path / "lines.txt"
+        text_file.write_text("Hello World\n", encoding="utf-8")
+        output_dir = tmp_path / "train"
+        (output_dir / "images").mkdir(parents=True)
+
+        generator = DatasetGenerator(
+            GenerationConfig(
+                fonts_dir=str(_FONTS_DIR),
+                record_metadata=True,
+                # underline_prob=1.0 fires on every line, so each record must carry it
+                text_deco=TextDecorationConfig(underline_prob=1.0),
+            )
+        )
+        count = generator.generate_split(
+            text_file=text_file,
+            output_dir=output_dir,
+            split_name="train",
+            copies=2,
+            workers=1,
+        )
+        assert count > 0
+        meta_lines = (output_dir / "metadata.jsonl").read_text(encoding="utf-8").splitlines()
+        assert meta_lines
+        for line in meta_lines:
+            record = json.loads(line)
+            assert "decorations" in record
+            assert "underline" in record["decorations"]

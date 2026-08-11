@@ -784,6 +784,18 @@ class ImageRenderer:
             if font is None or not self._is_text_supported(font, text):
                 return None
         else:
+            style = self._sample_decorations(text)
+            if style.active:
+                decorated = self._render_decorated(text, style, augment, target_height, retry_limit)
+                if decorated is not None:
+                    deco_img, deco_font = decorated
+                    img = self._resize_to_target(deco_img, target_height)
+                    meta = {
+                        "font": getattr(deco_font, "path", None),
+                        "font_size": getattr(deco_font, "size", None),
+                        "decorations": self._deco_names(style),
+                    }
+                    return img, target_height, meta
             font = self._select_font(text, target_height, retry_limit)
         if font is None:
             return None
