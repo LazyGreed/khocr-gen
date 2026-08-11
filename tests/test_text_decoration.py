@@ -6,11 +6,12 @@ import random
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import numpy as np  # noqa: F401  # forward-declared for Task 4 tests
-import pytest  # noqa: F401  # forward-declared for Task 4 tests
+import numpy as np
+import pytest
+from PIL import ImageFont
 
 from khocr_gen.config import GenerationConfig, TextDecorationConfig
-from khocr_gen.fonts import FontManager  # noqa: F401  # forward-declared for Task 4 tests
+from khocr_gen.fonts import FontManager
 from khocr_gen.rendering import DecorStyle, ImageRenderer
 
 _FONTS_DIR = Path(__file__).resolve().parent.parent / "fonts"
@@ -69,3 +70,101 @@ class TestSampleDecorations:
         random.seed(0)
         style = _renderer(cfg)._sample_decorations("Hello")
         assert style.color
+
+
+@pytest.mark.skipif(not _HAS_REAL_FONTS, reason="real fonts not available")
+class TestRenderDecorated:
+    def _cfg(self, **deco_kw) -> GenerationConfig:
+        return GenerationConfig(
+            color_mode=3,
+            bg_color_mode="default",
+            text_deco=TextDecorationConfig(**deco_kw),
+        )
+
+    def _renderer(self, **deco_kw) -> ImageRenderer:
+        cfg = self._cfg(**deco_kw)
+        fm = FontManager(fonts_dir=str(_FONTS_DIR))
+        return ImageRenderer(fm, cfg)
+
+    def _decorated(self, renderer, text, style):
+        random.seed(0)
+        return renderer._render_decorated(
+            text, style, augment=False, target_height=48, retry_limit=3
+        )
+
+    def _ink_rows(self, img) -> np.ndarray:
+        gray = img if img.ndim == 2 else np.min(img, axis=-1)
+        return np.argwhere(gray < 128)
+
+    def test_underline_adds_ink_below_text(self):
+        r = self._renderer(underline_prob=1.0)
+        img, _ = self._decorated(r, "Hello", DecorStyle(underline=True))
+        plain, _ = self._decorated(self._renderer(), "Hello", DecorStyle())
+        assert img is not None and plain is not None
+        bottom = img.shape[0] // 2
+        assert np.sum(np.min(img, axis=-1)[bottom:] < 128) > np.sum(
+            np.min(plain, axis=-1)[bottom:] < 128
+        )
+
+    def test_superscript_raises_glyph(self):
+        r = self._renderer()
+        img_sup, _ = self._decorated(r, "H2O", DecorStyle(super_indices=[1]))
+        img_plain, _ = self._decorated(self._renderer(), "H2O", DecorStyle())
+        assert img_sup is not None and img_plain is not None
+        assert self._ink_rows(img_sup)[:, 0].min() <= self._ink_rows(img_plain)[:, 0].min()
+
+    def test_subscript_lowers_glyph(self):
+        r = self._renderer()
+        img_sub, _ = self._decorated(r, "H2O", DecorStyle(sub_indices=[1]))
+        img_plain, _ = self._decorated(self._renderer(), "H2O", DecorStyle())
+        assert img_sub is not None and img_plain is not None
+        assert self._ink_rows(img_sub)[:, 0].max() >= self._ink_rows(img_plain)[:, 0].max()
+
+    def test_color_applied_in_rgb(self):
+        r = self._renderer(color_prob=1.0)
+        img, _ = self._decorated(r, "Hello", DecorStyle(color=True))
+        assert img is not None
+        dark = np.argwhere(np.min(img, axis=-1) < 128)
+        assert len(dark) > 0
+        i, j = dark[0]
+        cr, cg, cb = img[i, j]
+        assert not (cr == cg == cb)  # colored text, not gray
+
+    def test_no_clipping_when_decorated(self):
+        r = self._renderer()
+        style = DecorStyle(underline=True, super_indices=[1], sub_indices=[7], color=True)
+        img, _ = self._decorated(r, "H2O Hello", style)
+        assert img is not None
+        ink = np.min(img, axis=-1) < 128
+        rows = np.argwhere(ink.any(axis=1)).ravel()
+        cols = np.argwhere(ink.any(axis=0)).ravel()
+        assert rows.min() >= 1 and rows.max() <= img.shape[0] - 2
+        assert cols.min() >= 1 and cols.max() <= img.shape[1] - 2
+
+    def test_bold_uses_real_variant_font(self):
+        r = self._renderer(bold_prob=1.0)
+        _img, font = self._decorated(r, "Hello", DecorStyle(bold=True))
+        assert font is not None
+        style_name = ImageFont.truetype(getattr(font, "path", ""), 28).getname()[1].lower()
+        assert "bold" in style_name
+
+    def test_bold_dropped_when_no_variant(self, monkeypatch):
+        r = self._renderer(bold_prob=1.0)
+        monkeypatch.setattr(
+            r.font_manager, "random_font_path_with_style", lambda text, styles: None
+        )
+        style = DecorStyle(bold=True, underline=True)
+        result = self._decorated(r, "Hello", style)
+        assert result is not None
+        assert style.bold is False  # dropped
+        assert style.underline is True  # still applied
+
+    def test_internal_failure_returns_none_not_raise(self, monkeypatch):
+        r = self._renderer()
+
+        def _boom(text, style, augment, target_height, retry_limit):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(r, "_render_decorated_impl", _boom)
+        result = self._decorated(r, "Hello", DecorStyle(underline=True))
+        assert result is None  # swallowed by _render_decorated, never raised

@@ -27,6 +27,24 @@ HAS_PIL = True  # Import of PIL.Image above verifies this
 
 _LOGGER = get_logger("rendering")
 
+# Text colors guaranteed to contrast with the sampled backgrounds.
+_DECO_DARK_TEXT_COLORS = [
+    (192, 57, 43),  # red
+    (31, 97, 141),  # blue
+    (30, 132, 73),  # green
+    (108, 52, 131),  # purple
+    (185, 119, 14),  # orange
+    (136, 78, 160),  # magenta
+]
+_DECO_LIGHT_TEXT_COLORS = [
+    (255, 214, 100),
+    (130, 224, 255),
+    (180, 255, 180),
+    (255, 160, 160),
+    (255, 200, 255),
+    (255, 245, 160),
+]
+
 
 class _BoundedCache(dict):
     """Dict that evicts the oldest entries (FIFO) when maxsize is exceeded."""
@@ -343,6 +361,191 @@ class ImageRenderer:
             if candidates and random.random() < deco.superscript_prob:
                 style.super_indices = random.sample(candidates, min(2, len(candidates)))
         return style
+
+    @staticmethod
+    def _sample_deco_color(bg_color: int | tuple[int, int, int]) -> tuple[int, int, int]:
+        """Pick a decoration color that contrasts with *bg_color*."""
+        if isinstance(bg_color, tuple):
+            lum = 0.299 * bg_color[0] + 0.587 * bg_color[1] + 0.114 * bg_color[2]
+        else:
+            lum = float(bg_color)
+        palette = _DECO_LIGHT_TEXT_COLORS if lum < 128 else _DECO_DARK_TEXT_COLORS
+        return random.choice(palette)
+
+    @staticmethod
+    def _deco_names(style: DecorStyle) -> list[str]:
+        """Active decoration names for metadata (best-effort)."""
+        names: list[str] = []
+        if style.bold:
+            names.append("bold")
+        if style.italic:
+            names.append("italic")
+        if style.underline:
+            names.append("underline")
+        if style.color:
+            names.append("color")
+        if style.sub_indices:
+            names.append("subscript")
+        if style.super_indices:
+            names.append("superscript")
+        return names
+
+    def _build_deco_runs(
+        self, text: str, base_font: Any, base_ascent: int, base_size: int, style: DecorStyle
+    ) -> list[tuple[str, Any, float]]:
+        """Split *text* into drawable runs: ``(segment, font, vertical offset dy)``.
+
+        Sub/superscript characters become their own runs at ~0.65x size with a
+        baseline offset; everything else is one contiguous run on the base font.
+        """
+        base_path = getattr(base_font, "path", None)
+        small_font = None
+        if base_path is not None:
+            small_font = self.font_manager.get_font_by_path_and_size(
+                base_path, max(8, round(base_size * 0.65))
+            )
+
+        sub_set = set(style.sub_indices)
+        super_set = set(style.super_indices)
+        # Subscript drop: spec says ~0.3 x descent; at typical metrics that is only
+        # ~0.06em (1-2px) and visually invisible. 0.18em is the visually-correct
+        # subscript drop and is what the spec's "~" allows.
+        sub_offset = round(base_size * 0.18)
+        super_offset = -round(base_ascent * 0.35)  # raise by ~0.35 x ascent (spec)
+
+        runs: list[tuple[str, Any, float]] = []
+        seg: list[str] = []
+        for idx, ch in enumerate(text):
+            if idx in sub_set or idx in super_set:
+                if seg:
+                    runs.append(("".join(seg), base_font, 0.0))
+                    seg = []
+                font = small_font if small_font is not None else base_font
+                dy = sub_offset if idx in sub_set else super_offset
+                runs.append((ch, font, float(dy)))
+            else:
+                seg.append(ch)
+        if seg:
+            runs.append(("".join(seg), base_font, 0.0))
+        return runs
+
+    def _render_decorated(
+        self,
+        text: str,
+        style: DecorStyle,
+        augment: bool,
+        target_height: int,
+        retry_limit: int,
+    ) -> tuple[np.ndarray, Any] | None:
+        """Render a single line with decorations on the single-font path.
+
+        Bold/italic are applied only when a matching variant font exists; if none
+        does, the flag is cleared and the line renders with a regular font (other
+        decorations still apply). Returns ``(image, base_font)`` or ``None`` on
+        failure. Never raises.
+        """
+        try:
+            return self._render_decorated_impl(text, style, augment, target_height, retry_limit)
+        except Exception as exc:
+            _LOGGER.warning("text decoration rendering failed: %s", exc)
+            return None
+
+    def _render_decorated_impl(
+        self,
+        text: str,
+        style: DecorStyle,
+        augment: bool,
+        target_height: int,
+        retry_limit: int,
+    ) -> tuple[np.ndarray, Any] | None:
+        # 1. Base font (variant when bold/italic requested and available).
+        if style.bold or style.italic:
+            desired: set[str] = set()
+            if style.bold:
+                desired.add("bold")
+            if style.italic:
+                desired.add("italic")
+            path = self.font_manager.random_font_path_with_style(text, desired)
+            variant = None
+            if path is not None:
+                if self.font_size_mode == "proportional":
+                    size = max(8, round(target_height * sample_font_scale(self._cfg)))
+                else:
+                    size = random.choice([28, 32, 36, 40, 44, 48])
+                variant = self.font_manager.get_font_by_path_and_size(path, size)
+            if variant is not None and self._is_text_supported(variant, text):
+                font = variant
+            else:
+                style.bold = False
+                style.italic = False
+                font = self._select_font(text, target_height, retry_limit)
+                if font is None:
+                    return None
+        else:
+            font = self._select_font(text, target_height, retry_limit)
+            if font is None:
+                return None
+
+        if not self._is_text_supported(font, text):
+            return None
+        base_size = int(getattr(font, "size", 28))
+        try:
+            ascent, descent = font.getmetrics()
+        except Exception:
+            ascent, descent = font.getbbox(text)[3], 0
+
+        # 2. Run layout.
+        runs = self._build_deco_runs(text, font, ascent, base_size, style)
+        widths = [self._measurement_draw.textlength(seg, font=fnt) for seg, fnt, _ in runs]
+        total_w = round(sum(widths))
+        underline_th = max(1, base_size // 15)
+
+        # 3. Vertical extent relative to the shared baseline.
+        rel_top = 0
+        rel_bottom = 0
+        for (seg, fnt, dy), _w in zip(runs, widths, strict=True):
+            bbox = fnt.getbbox(seg)
+            try:
+                run_ascent, _run_descent = fnt.getmetrics()
+            except Exception:
+                run_ascent = bbox[3]
+            rel_top = min(rel_top, dy + bbox[1] - run_ascent)
+            rel_bottom = max(rel_bottom, dy + bbox[3] - run_ascent)
+        if style.underline:
+            rel_bottom = max(rel_bottom, descent + 2 + underline_th)
+
+        # 4. Canvas sizing (never clips).
+        padding_x = random.randint(10, 30) if augment else 20
+        padding_y = random.randint(5, 15) if augment else 10
+        img_w = max(1, total_w + padding_x * 2)
+        img_h = max(1, round((rel_bottom - rel_top) + padding_y * 2))
+
+        bg_color, text_color = self._sample_bg_and_text_colors(augment)
+        if style.color and self._pil_mode == "RGB":
+            fill = self._sample_deco_color(bg_color)
+        else:
+            fill = text_color
+
+        img = Image.new(self._pil_mode, (img_w, img_h), color=bg_color)
+        draw = ImageDraw.Draw(img)
+        baseline_y = padding_y - rel_top + (random.randint(-2, 2) if augment else 0)
+        x = padding_x + (random.randint(-3, 3) if augment else 0)
+
+        for (seg, fnt, dy), w in zip(runs, widths, strict=True):
+            try:
+                run_ascent, _ = fnt.getmetrics()
+            except Exception:
+                run_ascent = fnt.getbbox(seg)[3]
+            draw.text((x, baseline_y + dy - run_ascent), seg, font=fnt, fill=fill)
+            x += w
+
+        if style.underline:
+            y_ul = baseline_y + descent + 2
+            draw.line(
+                [(padding_x, y_ul), (padding_x + total_w, y_ul)], fill=fill, width=underline_th
+            )
+
+        return np.array(img), font
 
     def _render_clean_canvas(
         self,
