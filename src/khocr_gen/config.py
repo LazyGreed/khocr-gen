@@ -52,6 +52,114 @@ class AugMethodConfig:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Per-line text decoration config
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class TextDecorationConfig:
+    """Probabilities for per-line text decorations applied at render time.
+
+    Decorations are rendering attributes (not augmentations): each image
+    independently samples each decoration, so they can combine (e.g. bold +
+    underline). All probabilities default to 0.0 (feature off).
+    """
+
+    color_prob: float = 0.0  # whole-line single random color (RGB mode only)
+    underline_prob: float = 0.0  # underline under the whole line
+    subscript_prob: float = 0.0  # lower 1-2 random ASCII chars
+    superscript_prob: float = 0.0  # raise 1-2 random ASCII chars
+    italic_prob: float = 0.0  # real italic/oblique variant font (no-op if absent)
+    bold_prob: float = 0.0  # real bold variant font (no-op if absent)
+
+    def __post_init__(self) -> None:
+        self.color_prob = float(max(0.0, min(1.0, self.color_prob)))
+        self.underline_prob = float(max(0.0, min(1.0, self.underline_prob)))
+        self.subscript_prob = float(max(0.0, min(1.0, self.subscript_prob)))
+        self.superscript_prob = float(max(0.0, min(1.0, self.superscript_prob)))
+        self.italic_prob = float(max(0.0, min(1.0, self.italic_prob)))
+        self.bold_prob = float(max(0.0, min(1.0, self.bold_prob)))
+
+    @property
+    def enabled(self) -> bool:
+        return any(
+            (
+                self.color_prob > 0.0,
+                self.underline_prob > 0.0,
+                self.subscript_prob > 0.0,
+                self.superscript_prob > 0.0,
+                self.italic_prob > 0.0,
+                self.bold_prob > 0.0,
+            )
+        )
+
+    @staticmethod
+    def add_args(parser: argparse.ArgumentParser) -> None:
+        g = parser.add_argument_group(
+            "Text decoration",
+            "Per-line text decorations applied at render time (can combine). "
+            "Bold/italic require a matching variant font; random color requires --color-mode 3.",
+        )
+        g.add_argument(
+            "--text-deco-color-prob",
+            type=float,
+            default=None,
+            metavar="F",
+            help="Probability of a single random text color for the whole line (default: 0)",
+        )
+        g.add_argument(
+            "--text-deco-underline-prob",
+            type=float,
+            default=None,
+            metavar="F",
+            help="Probability of underlining the line (default: 0)",
+        )
+        g.add_argument(
+            "--text-deco-subscript-prob",
+            type=float,
+            default=None,
+            metavar="F",
+            help="Probability of lowering 1-2 random ASCII chars as subscript (default: 0)",
+        )
+        g.add_argument(
+            "--text-deco-superscript-prob",
+            type=float,
+            default=None,
+            metavar="F",
+            help="Probability of raising 1-2 random ASCII chars as superscript (default: 0)",
+        )
+        g.add_argument(
+            "--text-deco-italic-prob",
+            type=float,
+            default=None,
+            metavar="F",
+            help="Probability of italicizing via a real italic/oblique variant font (default: 0)",
+        )
+        g.add_argument(
+            "--text-deco-bold-prob",
+            type=float,
+            default=None,
+            metavar="F",
+            help="Probability of bolding via a real bold variant font (default: 0)",
+        )
+
+    @classmethod
+    def from_args(cls, args: argparse.Namespace) -> TextDecorationConfig:
+        def _get(name: str) -> float:
+            value = getattr(args, f"text_deco_{name}_prob", None)
+            return float(value) if value is not None else 0.0
+
+        return cls(
+            color_prob=_get("color"),
+            underline_prob=_get("underline"),
+            subscript_prob=_get("subscript"),
+            superscript_prob=_get("superscript"),
+            italic_prob=_get("italic"),
+            bold_prob=_get("bold"),
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -280,6 +388,9 @@ class GenerationConfig:
 
     # ── Normalizer config ──────────────────────────────────────────────────
     normalizer: NormalizerConfig = field(default_factory=NormalizerConfig)
+
+    # ── Text decorations ──────────────────────────────────────────────────
+    text_deco: TextDecorationConfig = field(default_factory=TextDecorationConfig)
 
     # ───────────────────────────────────────────────────────────────────────
     # Split ratio resolution
@@ -792,6 +903,9 @@ class GenerationConfig:
             ),
         )
 
+        # ── Text decoration ──────────────────────────────────────────────────
+        TextDecorationConfig.add_args(parser)
+
         # ── Augmentation methods: prob, min, max per method ────────────────
         g_aug = parser.add_argument_group(
             "Augmentation methods",
@@ -911,6 +1025,7 @@ class GenerationConfig:
             lmdb_jpeg_quality=int(getattr(args, "lmdb_jpeg_quality", 90)),
             lmdb_map_size_gb=int(getattr(args, "lmdb_map_size_gb", 256)),
             dpi_mode=str(dpi_mode),
+            text_deco=TextDecorationConfig.from_args(args),
             normalizer=NormalizerConfig.from_args(args),
         )
         for attr_name, aug_cfg in aug_kwargs.items():
@@ -953,6 +1068,15 @@ class GenerationConfig:
                     "remove_zwsp": value.remove_zwsp,
                     "passthrough": value.passthrough,
                 }
+            elif isinstance(value, TextDecorationConfig):
+                result[f.name] = {
+                    "color_prob": value.color_prob,
+                    "underline_prob": value.underline_prob,
+                    "subscript_prob": value.subscript_prob,
+                    "superscript_prob": value.superscript_prob,
+                    "italic_prob": value.italic_prob,
+                    "bold_prob": value.bold_prob,
+                }
             else:
                 result[f.name] = value
         return result
@@ -982,6 +1106,15 @@ class GenerationConfig:
                     url_replacement=value.get("url_replacement", ""),
                     remove_zwsp=value.get("remove_zwsp", True),
                     passthrough=value.get("passthrough", False),
+                )
+            elif key == "text_deco" and isinstance(value, dict):
+                other_kwargs[key] = TextDecorationConfig(
+                    color_prob=float(value.get("color_prob", 0.0)),
+                    underline_prob=float(value.get("underline_prob", 0.0)),
+                    subscript_prob=float(value.get("subscript_prob", 0.0)),
+                    superscript_prob=float(value.get("superscript_prob", 0.0)),
+                    italic_prob=float(value.get("italic_prob", 0.0)),
+                    bold_prob=float(value.get("bold_prob", 0.0)),
                 )
             elif key not in aug_method_names:
                 other_kwargs[key] = value

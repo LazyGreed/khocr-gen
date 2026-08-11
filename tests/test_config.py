@@ -6,7 +6,7 @@ import argparse
 
 import pytest
 
-from khocr_gen.config import AugMethodConfig, GenerationConfig
+from khocr_gen.config import AugMethodConfig, GenerationConfig, TextDecorationConfig
 from khocr_gen.normalizer import NormalizerConfig
 
 
@@ -472,3 +472,74 @@ class TestVariableLineHeightConfig:
         assert restored.line_height_step == 16
         assert restored.font_size_mode == "proportional"
         assert restored.record_metadata is True
+
+
+class TestTextDecorationConfig:
+    def test_defaults_off(self):
+        cfg = GenerationConfig()
+        assert not cfg.text_deco.enabled
+        assert cfg.text_deco.color_prob == 0.0
+        assert cfg.text_deco.underline_prob == 0.0
+        assert cfg.text_deco.subscript_prob == 0.0
+        assert cfg.text_deco.superscript_prob == 0.0
+        assert cfg.text_deco.italic_prob == 0.0
+        assert cfg.text_deco.bold_prob == 0.0
+
+    def test_from_args_parses_flags(self):
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        args = parser.parse_args(
+            [
+                "--text-deco-color-prob",
+                "0.5",
+                "--text-deco-underline-prob",
+                "0.3",
+                "--text-deco-subscript-prob",
+                "0.1",
+                "--text-deco-superscript-prob",
+                "0.2",
+                "--text-deco-italic-prob",
+                "0.4",
+                "--text-deco-bold-prob",
+                "0.6",
+            ]
+        )
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.text_deco.color_prob == 0.5
+        assert cfg.text_deco.underline_prob == 0.3
+        assert cfg.text_deco.subscript_prob == 0.1
+        assert cfg.text_deco.superscript_prob == 0.2
+        assert cfg.text_deco.italic_prob == 0.4
+        assert cfg.text_deco.bold_prob == 0.6
+
+    def test_flat_yaml_keys_map_to_argparse_dests(self):
+        # The YAML loader normalizes hyphens to underscores and pushes values
+        # into argparse via set_defaults; dest must match the attr names.
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        parser.set_defaults(text_deco_color_prob=0.9, text_deco_underline_prob=0.8)
+        args = parser.parse_args([])
+        cfg = GenerationConfig.from_args(args)
+        assert cfg.text_deco.color_prob == 0.9
+        assert cfg.text_deco.underline_prob == 0.8
+
+    def test_to_dict_from_dict_roundtrip(self):
+        deco = TextDecorationConfig(color_prob=0.5, bold_prob=0.2)
+        cfg = GenerationConfig(text_deco=deco)
+        d = cfg.to_dict()
+        assert d["text_deco"] == {
+            "color_prob": 0.5,
+            "underline_prob": 0.0,
+            "subscript_prob": 0.0,
+            "superscript_prob": 0.0,
+            "italic_prob": 0.0,
+            "bold_prob": 0.2,
+        }
+        rebuilt = GenerationConfig.from_dict(d)
+        assert rebuilt.text_deco.color_prob == 0.5
+        assert rebuilt.text_deco.bold_prob == 0.2
+
+    def test_probabilities_clamped(self):
+        deco = TextDecorationConfig(color_prob=1.5, underline_prob=-0.5)
+        assert deco.color_prob == 1.0
+        assert deco.underline_prob == 0.0
