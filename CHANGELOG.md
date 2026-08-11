@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Per-line text decorations: `--text-deco-color-prob` (random line color, RGB only),
+  `--text-deco-underline-prob`, `--text-deco-subscript-prob` / `--text-deco-superscript-prob`
+  (1-2 random ASCII chars lowered/raised), `--text-deco-italic-prob` / `--text-deco-bold-prob`
+  (real italic/bold variant fonts; skipped when no variant exists). Decorations are
+  rendering attributes sampled per image on the clean canvas (can combine, isolated
+  from augmentations) and recorded in `metadata.jsonl` via the `decorations` key.
+
 ## [0.1.6] - 2026-08-04
 
 ### Added

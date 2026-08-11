@@ -8,6 +8,7 @@ Synthetic OCR training data generator for mixed Khmer/English text.
 
 - **Mixed-script rendering:** per-span font selection for Khmer + English
 - **Variable line height:** sample per-image canvas height (fixed/variable/bucketed), with optional proportional font scaling and random padding, no glyph clipping
+- **Text decorations:** per-line color, underline, subscript/superscript, italic, and bold sampled at render time (can combine, isolated from augmentations)
 - **24 augmentation methods:** unified registry covering scanner/camera degradations and training-time transforms
 - **Rust acceleration:** 21/24 augmentation methods plus font glyph checking run through a native PyO3 extension, with automatic pure-Python fallback
 - **Isolated augmentation:** one effect per image, weighted by configurable probabilities
@@ -140,6 +141,17 @@ Each canvas is rendered at its natural size and uniformly resized (never cropped
 height, so glyphs are never clipped. `labels.txt` is unchanged; add `--record-metadata` to also
 write a `metadata.jsonl` sidecar with per-image width/height/font info. See
 [CLI_REFERENCE.md](docs/CLI_REFERENCE.md#variable-line-height) for the full flag list.
+
+### Text decorations
+
+Per-line text decorations are sampled at render time on the clean canvas (before
+augmentation) and can combine. Bold/italic use real variant fonts and are skipped
+when no matching variant exists; random colors require `--color-mode 3`.
+
+```text
+khocr-gen generate --text-deco-color-prob 0.3 --text-deco-underline-prob 0.2 \
+          --text-deco-bold-prob 0.2 --color-mode 3 ...
+```
 
 ## Augmentation
 

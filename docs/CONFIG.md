@@ -231,6 +231,20 @@ anisotropic_dilation:
   max: 0.9
 ```
 
+## Text decoration
+
+Per-line decorations applied at render time (before augmentation). Each key is a
+probability in `[0, 1]`; default `0` disables that decoration. Decorations can
+combine. Bold/italic require a matching variant font and are skipped otherwise.
+Random color requires `color-mode: 3`.
+
+- `text-deco-color-prob` — single random text color for the whole line (RGB only)
+- `text-deco-underline-prob` — underline the whole line
+- `text-deco-subscript-prob` — lower 1–2 random ASCII chars
+- `text-deco-superscript-prob` — raise 1–2 random ASCII chars
+- `text-deco-italic-prob` — italic via a real italic/oblique variant font
+- `text-deco-bold-prob` — bold via a real bold variant font
+
 ## Augmentation Method Fields
 
 Each augmentation method is configured with three values:

@@ -48,6 +48,12 @@ khocr-gen generate --corpus corpus/corpus.txt --storage both
 | `--copies N` | int | 3 | Augmented copies per text line (font-mode=random) |
 | `--mixed-font-prob F` | float | 0.0 | Probability of per-span font for mixed Khmer/English |
 | `--retry-limit N` | int | 10 | Font selection retries when font lacks glyphs |
+| `--text-deco-color-prob F` | float | 0 | Probability of a single random text color for the whole line (RGB only; requires `--color-mode 3`) |
+| `--text-deco-underline-prob F` | float | 0 | Probability of underlining the whole line |
+| `--text-deco-subscript-prob F` | float | 0 | Probability of lowering 1–2 random ASCII chars |
+| `--text-deco-superscript-prob F` | float | 0 | Probability of raising 1–2 random ASCII chars |
+| `--text-deco-italic-prob F` | float | 0 | Probability of italic rendering via a real italic/oblique variant font (skipped when none exists) |
+| `--text-deco-bold-prob F` | float | 0 | Probability of bold rendering via a real bold variant font (skipped when none exists) |
 
 #### Variable line height
 
