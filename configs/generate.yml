@@ -1,23 +1,23 @@
 # Rendering
-height: 48
+height: 64
 # width: null                         # omit for variable width
 color-mode: 3                         # 1 = grayscale, 3 = RGB
 fonts: fonts/
 font-mode: random
 copies: 3
-mixed-font-prob: 0.0
+mixed-font-prob: 0.5
 retry-limit: 10
 random-align-when-padded: false
 
 # Variable line height (all optional; default is fixed --height for every image)
-line-height-mode: variable            # fixed | variable | bucketed
+line-height-mode: bucketed            # fixed | variable | bucketed
 min-line-height: 32
-max-line-height: 64
+max-line-height: 96
 line-height-step: 16
 line-height-distribution: uniform     # uniform | triangular
 # default-line-height: 48             # triangular peak; defaults to range midpoint
 font-size-mode: proportional          # fixed | proportional
-min-font-scale: 0.65
+min-font-scale: 0.5
 max-font-scale: 0.9
 vertical-padding-mode: random         # fixed | random
 min-vertical-padding-ratio: 0.04
@@ -25,23 +25,28 @@ max-vertical-padding-ratio: 0.18
 record-metadata: true                 # write metadata.jsonl per split
 
 # Text decoration (all optional; default 0 = disabled, each a probability in [0, 1])
-text-deco-color-prob: 0.0             # random line color (RGB only; needs color-mode: 3)
-text-deco-underline-prob: 0.0         # underline the whole line
-text-deco-subscript-prob: 0.0         # lower 1-2 random ASCII chars
-text-deco-superscript-prob: 0.0       # raise 1-2 random ASCII chars
-text-deco-italic-prob: 0.0            # italic via real italic/oblique variant font
-text-deco-bold-prob: 0.0              # bold via real bold variant font
+text-deco-color-prob: 0.5             # random line color (RGB only; needs color-mode: 3)
+text-deco-underline-prob: 0.2         # underline the whole line
+text-deco-subscript-prob: 0.2         # lower 1-2 random ASCII chars
+text-deco-superscript-prob: 0.2       # raise 1-2 random ASCII chars
+text-deco-italic-prob: 0.3            # italic via real italic/oblique variant font
+text-deco-bold-prob: 0.3              # bold via real bold variant font
 
 # Corpus
 corpus: corpus/corpus.txt
 min-length: 1
-max-length: 260
+max-length: 60
 lines: 0                              # 0 = all
-val-percent: 10.0
-test-percent: 10.0                    # if only val-percent is set, test-percent is 0%
-#split-ratio: [80, 10, 10]            # overrides val-percent/test-percent
+#val-percent: 10.0
+#test-percent: 10.0                   # if only val-percent is set, test-percent is 0%
+split-ratios: [80, 10, 10]            # overrides val-percent/test-percent
 test-file: ""                         # separate test corpus; sole source of the test split when set
 seed: 42
+count-only: false                     # print filter stats + estimated image count, then exit
+oversample-rare-chars: true           # extra copies of training lines containing rare chars
+rare-char-percentile: 5.0             # least-frequent % of distinct chars considered rare
+rare-char-multiplier: 3.0             # copy multiplier for lines containing a rare char
+# image-dir: ""                       # bypass text rendering; corpus must be labels.txt
 
 # Output
 output: data/
@@ -49,9 +54,16 @@ append: false
 overwrite: false
 vocab: ""                             # auto-derived
 skip-vocab: false
-output-format: jpg                    # png | jpg | tiff
+output-format: png                    # png | jpg | tiff
 jpeg-quality: 90                      # JPEG quality for jpg output
-storage: raw                          # raw | lmdb | both
+storage: both                         # raw | lmdb | both
+
+# LMDB Packing
+pack-lmdb: false                      # pack generated dataset into LMDB after generation
+keep-raw: false                       # keep raw image files after LMDB packing
+lmdb-jpeg-quality: 90                 # JPEG quality for LMDB-stored images
+lmdb-map-size-gb: 256                 # LMDB map size in GiB
+lmdb-verbose: false                   # print LMDB packing progress
 
 # Workers
 workers: 0                            # 0 = auto
@@ -59,6 +71,9 @@ worker-timeout: 300
 
 # DPI
 dpi-mode: native
+
+# Rendering style
+bg-color-mode: random                 # default | paper_tones | colored | dark_mode | gradient | random
 
 # Text normalization
 norm_unicode_norm: ""                 # skipped by default; khmernormalizer normalizes internally
@@ -114,7 +129,7 @@ background-texture-prob: 0.35
 background-texture-min: 0.1
 background-texture-max: 0.9
 
-lowdpi-prob: 0.05
+lowdpi-prob: 0.3
 lowdpi-min: 0.1
 lowdpi-max: 0.9
 
