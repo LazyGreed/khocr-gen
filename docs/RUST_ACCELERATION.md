@@ -51,7 +51,7 @@ build missing a class/function you just added).
 
 ## What's accelerated
 
-### Augmentation (21 of 24 methods)
+### Augmentation (21 of 25 methods)
 
 `khocr_gen.augmentation.AUG_METHODS` transparently swaps in the native implementation for
 each method below when `HAS_RUST_ACCEL` is true; otherwise the pure-Python/OpenCV
@@ -63,10 +63,10 @@ Accelerated: `sauvola`, `geo_warp`, `vertical_crop`, `blur`, `jpeg_compression`,
 `brightness_contrast`, `pixelation`, `morphological`, `anisotropic_dilation`.
 
 Not accelerated (pure Python/Albumentations only): `distortion`, `albu_noise` (thin
-wrappers around Albumentations' own compiled pipeline — no native win to be had), and
+wrappers around Albumentations' own compiled pipeline — no native win to be had),
 `gradient_illumination` (the Rust implementation is grayscale-only, but the renderer may
 pass RGB arrays through `_RGB_PREFERRED_METHODS`, so it's excluded until an RGB path is
-added).
+added), and `low_contrast_caption` (no native implementation yet).
 
 ### Font glyph checking (`FontFace`)
 

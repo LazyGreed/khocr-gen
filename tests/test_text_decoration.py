@@ -145,8 +145,9 @@ class TestRenderDecorated:
         r = self._renderer(bold_prob=1.0)
         _img, font = self._decorated(r, "Hello", DecorStyle(bold=True))
         assert font is not None
-        style_name = ImageFont.truetype(getattr(font, "path", ""), 28).getname()[1].lower()
-        assert "bold" in style_name
+        style_name = ImageFont.truetype(getattr(font, "path", ""), 28).getname()[1]
+        assert style_name is not None
+        assert "bold" in style_name.lower()
 
     def test_bold_dropped_when_no_variant(self, monkeypatch):
         r = self._renderer(bold_prob=1.0)

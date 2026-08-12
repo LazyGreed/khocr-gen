@@ -473,7 +473,7 @@ class ImageRenderer:
                 else:
                     size = random.choice([28, 32, 36, 40, 44, 48])
                 variant = self.font_manager.get_font_by_path_and_size(path, size)
-            if variant is not None and self._is_text_supported(variant, text):
+            if path is not None and variant is not None and self._is_text_supported(variant, text):
                 font = variant
                 # A variant may satisfy only part of the request (e.g. bold-only
                 # fallback when bold+italic was requested): drop the styles the

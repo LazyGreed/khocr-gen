@@ -24,10 +24,10 @@ from khocr_gen.augmentation import (
 
 
 class TestUnifiedImports:
-    """Verify all 24 methods are available via the unified AUG_METHODS dict."""
+    """Verify all 25 methods are available via the unified AUG_METHODS dict."""
 
-    def test_has_24_methods(self):
-        assert len(AUG_METHODS) == 24
+    def test_has_25_methods(self):
+        assert len(AUG_METHODS) == 25
 
     def test_all_expected_names_present(self):
         expected = {
@@ -43,6 +43,7 @@ class TestUnifiedImports:
             "background_texture",
             "lowdpi",
             "oversample",
+            "low_contrast_caption",
             "perspective",
             "elastic",
             "random_crop",

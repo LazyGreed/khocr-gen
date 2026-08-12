@@ -17,6 +17,7 @@ from khocr_gen.augmentation import (
     apply_gradient_illumination,
     apply_hsv,
     apply_jpeg_compression,
+    apply_low_contrast_caption,
     apply_lowdpi,
     apply_morphological,
     apply_online_blur,
@@ -208,6 +209,40 @@ class TestOversample:
         assert result.shape == img.shape
 
 
+class TestLowContrastCaption:
+    def test_basic(self):
+        img = _make_test_image()
+        result = apply_low_contrast_caption(img, 0.5)
+        assert result is not None
+        assert result.shape == img.shape
+        assert result.dtype == np.uint8
+
+    def test_zero_intensity(self):
+        img = _make_test_image()
+        result = apply_low_contrast_caption(img, 0.0)
+        assert result is not None
+        assert result.shape == img.shape
+
+    def test_high_intensity_reduces_contrast(self):
+        img = _make_test_image()
+        result = apply_low_contrast_caption(img, 1.0)
+        assert result is not None
+        # Text (0) vs background (255) spread should shrink toward mid-gray.
+        assert int(result.max()) - int(result.min()) < int(img.max()) - int(img.min())
+
+    def test_tiny_image_passes(self):
+        img = _make_test_image(h=3, w=3)
+        result = apply_low_contrast_caption(img, 0.5)
+        assert result is not None
+
+    def test_rgb(self):
+        img_2d = _make_test_image(h=48, w=200)
+        img_rgb = np.stack([img_2d] * 3, axis=-1)
+        result = apply_low_contrast_caption(img_rgb, 0.5)
+        assert result is not None
+        assert result.shape == img_rgb.shape
+
+
 class TestDistortion:
     def test_basic(self):
         img = _make_test_image()
@@ -217,8 +252,8 @@ class TestDistortion:
 
 
 class TestUnifiedRegistry:
-    def test_has_24_methods(self):
-        assert len(AUG_METHODS) == 24
+    def test_has_25_methods(self):
+        assert len(AUG_METHODS) == 25
 
     def test_expected_names(self):
         expected = {
@@ -234,6 +269,7 @@ class TestUnifiedRegistry:
             "background_texture",
             "lowdpi",
             "oversample",
+            "low_contrast_caption",
             "perspective",
             "elastic",
             "random_crop",

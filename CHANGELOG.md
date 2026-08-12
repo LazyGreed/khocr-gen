@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-08-12
+
+### Added
+- `low_contrast_caption` augmentation method: simulates faded, small-point
+  caption/footnote text by compressing dynamic range toward mid-gray and
+  softening fine stroke detail via a downscale/upscale pass. Disabled by
+  default (`prob: 0.0`); enable with `--low-contrast-caption-prob`. 25
+  methods in the unified registry now (21/25 Rust-accelerated).
+
+### Fixed
+- `ty check` diagnostics from `ImageFont.getname()` returning `str | None`:
+  `FontManager._detect_font_style` (`fonts.py`) and the bold-variant test
+  in `test_text_decoration.py` now guard the style-name lookup against
+  `None` before calling `.lower()`; `ImageRenderer._render_decorated`
+  (`rendering.py`) narrows `path` alongside `variant` in the same `if` so
+  the subsequent `_style_tags(path)` call type-checks.
+
 ## [0.1.7] - 2026-08-11
 
 ### Added

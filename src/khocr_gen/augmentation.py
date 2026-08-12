@@ -531,6 +531,43 @@ def apply_background_texture(img: np.ndarray, intensity: float, **kwargs: Any) -
     return np.clip(out, 0.0, 255.0).astype(np.uint8)
 
 
+# ── Low-contrast small caption text ──────────────────────────────────────────
+
+
+def apply_low_contrast_caption(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
+    """Simulate faded, small-point caption/footnote text.
+
+    Combines two effects that co-occur when small caption text is scanned or
+    photocopied: the dynamic range collapses toward a mid-tone (poor contrast)
+    and fine stroke detail softens as if the glyphs were rendered at a small
+    point size and then rescaled.
+
+    intensity -> contrast compression [0.15, 0.65] and downscale ratio [0.85, 0.45].
+    """
+    h, w = img.shape[:2]
+    if h < 4 or w < 4:
+        return img
+
+    bg = _estimate_bg(img)
+
+    # Compress dynamic range toward a blend of background tone and neutral gray.
+    compression = 0.15 + intensity * 0.50
+    mid = float(bg) * 0.6 + 128.0 * 0.4
+    faded = img.astype(np.float32)
+    faded = faded + (mid - faded) * compression
+    faded = np.clip(faded, 0.0, 255.0).astype(np.uint8)
+
+    # Soften fine detail via a downscale/upscale pass, mimicking a small font
+    # rendered at low effective resolution.
+    ratio = 0.85 - intensity * 0.40  # [0.45, 0.85]
+    small_h = max(2, int(h * ratio))
+    small_w = max(2, int(w * ratio))
+    small = cv2.resize(faded, (small_w, small_h), interpolation=cv2.INTER_AREA)
+    softened = cv2.resize(small, (w, h), interpolation=cv2.INTER_LINEAR)
+
+    return softened
+
+
 # ── Low DPI ───────────────────────────────────────────────────────────────────
 
 
@@ -798,7 +835,7 @@ _RGB_PREFERRED_METHODS: frozenset[str] = frozenset(
     }
 )
 
-# Unified registry: all 24 augmentation methods.
+# Unified registry: all 25 augmentation methods.
 AUG_METHODS: dict[str, Any] = {
     # Generator-side (scanner/camera degradation simulation)
     "sauvola": apply_sauvola,
@@ -813,6 +850,7 @@ AUG_METHODS: dict[str, Any] = {
     "background_texture": apply_background_texture,
     "lowdpi": apply_lowdpi,
     "oversample": apply_oversample,
+    "low_contrast_caption": apply_low_contrast_caption,
     # Training-time simulation
     "perspective": apply_perspective,
     "elastic": apply_elastic,

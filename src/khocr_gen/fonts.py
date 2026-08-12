@@ -150,7 +150,8 @@ class FontManager:
         if "italic" in stem or "oblique" in stem:
             tags.add("italic")
         try:
-            style = ImageFont.truetype(font_path, 28).getname()[1].lower()
+            style_name = ImageFont.truetype(font_path, 28).getname()[1]
+            style = style_name.lower() if style_name else ""
             if "bold" in style:
                 tags.add("bold")
             if "italic" in style or "oblique" in style:

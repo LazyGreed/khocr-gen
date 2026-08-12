@@ -326,6 +326,11 @@ class GenerationConfig:
         default_factory=lambda: AugMethodConfig(prob=0.0, min=0.1, max=0.9)
     )
 
+    # Low-contrast small caption text
+    low_contrast_caption: AugMethodConfig = field(
+        default_factory=lambda: AugMethodConfig(prob=0.0, min=0.1, max=0.9)
+    )
+
     # Perspective warp
     perspective: AugMethodConfig = field(
         default_factory=lambda: AugMethodConfig(prob=0.0, min=0.1, max=0.9)
@@ -480,6 +485,7 @@ class GenerationConfig:
         ("background_texture", "Background texture overlay"),
         ("lowdpi", "Low-DPI rendering simulation"),
         ("oversample", "Oversample rendering"),
+        ("low_contrast_caption", "Low-contrast small caption text"),
         ("perspective", "Perspective warp"),
         ("elastic", "Elastic distortion"),
         ("random_crop", "Random height crop"),

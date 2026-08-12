@@ -1,11 +1,11 @@
 # Augmentation Reference
 
-`khocr-gen` provides 24 augmentation methods in a unified registry.
+`khocr-gen` provides 25 augmentation methods in a unified registry.
 Each generated image receives **exactly one** augmentation applied to a clean rendered canvas; effects are never stacked.
 
-21 of the 24 methods run through a native Rust extension when available (falling back to
-pure Python/OpenCV otherwise) — `distortion`, `albu_noise`, and `gradient_illumination`
-are the exceptions. See [RUST_ACCELERATION.md](RUST_ACCELERATION.md) for details.
+21 of the 25 methods run through a native Rust extension when available (falling back to
+pure Python/OpenCV otherwise) — `distortion`, `albu_noise`, `gradient_illumination`, and
+`low_contrast_caption` are the exceptions. See [RUST_ACCELERATION.md](RUST_ACCELERATION.md) for details.
 
 ## Architecture
 
@@ -38,7 +38,7 @@ The method maps this to physical units:
 
 ---
 
-## Augmentation Methods (24 methods)
+## Augmentation Methods (25 methods)
 
 All methods are applied in isolation; one effect per image, chosen probabilistically from the unified registry.
 
@@ -139,6 +139,17 @@ the renderer, not here).
 
 - **Intensity -> sharpen strength** [1.0, 1.5]
 - Uses a 3×3 unsharp mask kernel
+
+### `low_contrast_caption`: Low-Contrast Small Caption Text
+
+Simulates faded, small-point captions/footnotes common in scanned documents:
+dynamic range compresses toward mid-gray and fine stroke detail softens as if
+the text were rendered at a small point size.
+
+- **Intensity -> contrast compression** [0.15, 0.65]
+- **Intensity -> downscale ratio** [0.85, 0.45] (inverted: higher intensity = smaller = softer)
+- Compression blends pixel values toward `0.6 × background + 0.4 × neutral gray`
+- Detail loss via `INTER_AREA` downscale followed by `INTER_LINEAR` upscale
 
 ---
 

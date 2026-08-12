@@ -61,8 +61,9 @@ class TestGenerationConfigDefaults:
         enabled = cfg.enabled_aug_methods()
         # Several offline methods come enabled by default
         assert len(enabled) > 0
-        # Remaining methods (currently 12) start disabled by default
+        # Remaining methods (currently 13) start disabled by default
         remaining = {
+            "low_contrast_caption",
             "perspective",
             "elastic",
             "random_crop",
@@ -83,8 +84,8 @@ class TestGenerationConfigDefaults:
     def test_iter_aug_methods_count(self):
         cfg = GenerationConfig()
         methods = list(cfg.iter_aug_methods())
-        # 24 methods in unified registry
-        assert len(methods) == 24
+        # 25 methods in unified registry
+        assert len(methods) == 25
 
     def test_enabled_aug_methods_nonempty_by_default(self):
         cfg = GenerationConfig()

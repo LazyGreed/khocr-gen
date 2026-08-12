@@ -169,6 +169,11 @@ oversample:
   min: 0.1
   max: 0.9
 
+low_contrast_caption:
+  prob: 0.0
+  min: 0.1
+  max: 0.9
+
 # Online augmentations (default disabled)
 perspective:
   prob: 0.0
