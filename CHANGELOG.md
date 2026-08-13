@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-08-13
+
+### Fixed
+- `FontManager.get_font_by_path_and_size` (`fonts.py`): dynamically-sized fonts (used by
+  `font-size-mode: proportional`) were cached forever in `_font_lookup`, keyed by
+  `(font_path, size)`. Since proportional sizing samples a near-continuous scale
+  (`round(target_height * random.uniform(min_scale, max_scale))`), almost every render
+  produced a fresh cache key, so each worker process pinned an ever-growing number of
+  loaded FreeType faces in memory for the life of the run — measured at 12GB+ peak RSS
+  across a 6-worker run generating just 6,000 images, still climbing when the run ended.
+  Dynamically-sized fonts now go through a bounded LRU cache (`_dynamic_font_cache`,
+  default 1,024 entries, configurable via the new `dynamic_font_cache_size` constructor
+  arg) instead; fonts loaded at startup (used by `font-mode: all` via `get_font_by_ref`)
+  are unaffected and still cached permanently. Verified per-worker memory now plateaus
+  instead of growing with total images generated.
+
+### Changed
+- `FontManager.__init__` takes a new `verbose: bool = True` param gating the
+  font-loading/summary `print()` calls; worker processes (`parallel._init_render_worker`)
+  now construct it with `verbose=False` so parallel runs no longer print a duplicate
+  font summary per worker.
+
 ## [0.1.8] - 2026-08-12
 
 ### Added

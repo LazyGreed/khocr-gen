@@ -17,7 +17,7 @@ line-height-step: 16
 line-height-distribution: uniform     # uniform | triangular
 # default-line-height: 48             # triangular peak; defaults to range midpoint
 font-size-mode: proportional          # fixed | proportional
-min-font-scale: 0.5
+min-font-scale: 0.4
 max-font-scale: 0.9
 vertical-padding-mode: random         # fixed | random
 min-vertical-padding-ratio: 0.04
@@ -35,7 +35,7 @@ text-deco-bold-prob: 0.3              # bold via real bold variant font
 # Corpus
 corpus: corpus/corpus.txt
 min-length: 1
-max-length: 60
+max-length: 120
 lines: 0                              # 0 = all
 #val-percent: 10.0
 #test-percent: 10.0                   # if only val-percent is set, test-percent is 0%
@@ -97,7 +97,7 @@ geo-warp-prob: 0.2
 geo-warp-min: 0.1
 geo-warp-max: 0.9
 
-vertical-crop-prob: 0.0
+vertical-crop-prob: 0.4
 vertical-crop-min: 0.1
 vertical-crop-max: 0.9
 

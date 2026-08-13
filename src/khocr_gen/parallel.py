@@ -104,7 +104,9 @@ def _init_render_worker(config_dict: dict[str, Any]) -> None:
     # Reconstruct GenerationConfig from serialised dict
     gen_cfg = GenerationConfig.from_dict(config_dict)
 
-    font_manager = FontManager(language=gen_cfg.language, fonts_dir=gen_cfg.fonts_dir)
+    font_manager = FontManager(
+        language=gen_cfg.language, fonts_dir=gen_cfg.fonts_dir, verbose=False
+    )
     renderer = ImageRenderer(font_manager, gen_cfg)
 
     _WORKER_STATE = {

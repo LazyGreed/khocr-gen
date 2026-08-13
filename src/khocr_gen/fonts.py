@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -27,16 +28,32 @@ class FontManager:
 
     _FONT_EXTENSIONS: ClassVar[set[str]] = {".ttf", ".otf", ".ttc", ".woff", ".woff2"}
 
-    def __init__(self, language: str = "mixed", fonts_dir: str = "fonts") -> None:
+    # Bound on the dynamically-sized font cache (see `get_font_by_path_and_size`).
+    # Proportional font sizing samples a continuous scale, so almost every
+    # (font_path, size) pair is a cache miss; without a cap each miss permanently
+    # pins a freshly loaded FreeType face (roughly the font file's size) in
+    # memory, which grows unbounded over a long generation run.
+    _DYNAMIC_FONT_CACHE_SIZE: ClassVar[int] = 1024
+
+    def __init__(
+        self,
+        language: str = "mixed",
+        fonts_dir: str = "fonts",
+        verbose: bool = True,
+        dynamic_font_cache_size: int = _DYNAMIC_FONT_CACHE_SIZE,
+    ) -> None:
         if not HAS_PIL:
             raise ImportError("Pillow is required. Install with: pip install Pillow")
 
         self.language = language
         self.fonts_dir = Path(fonts_dir)
+        self.verbose = verbose
         self.khmer_fonts: list[tuple[str, int, Any]] = []
         self.english_fonts: list[tuple[str, int, Any]] = []
         self.all_fonts: list[tuple[str, int, Any]] = []
         self._font_lookup: dict[tuple[str, int], Any] = {}
+        self._dynamic_font_cache_size = max(0, dynamic_font_cache_size)
+        self._dynamic_font_cache: OrderedDict[tuple[str, int], Any] = OrderedDict()
         self._font_styles: dict[str, set[str]] = {}
         self._text_has_khmer_cache: dict[str, bool] = {}
         self._load_fonts()
@@ -71,7 +88,8 @@ class FontManager:
 
     def _load_fonts(self) -> None:
         """Load fonts from khmer/ and english/ subdirectories."""
-        print(f"\nLoading fonts from: {self.fonts_dir.absolute()}")
+        if self.verbose:
+            print(f"\nLoading fonts from: {self.fonts_dir.absolute()}")
 
         if not self.fonts_dir.exists():
             print(f"  Warning: Fonts directory not found: {self.fonts_dir}")
@@ -115,10 +133,11 @@ class FontManager:
             )
             return
 
-        print("\n  Font Summary:")
-        print(f"    Total entries  : {len(self.all_fonts)} (across all sizes)")
-        print(f"    Khmer entries  : {len(self.khmer_fonts)}")
-        print(f"    English entries: {len(self.english_fonts)}")
+        if self.verbose:
+            print("\n  Font Summary:")
+            print(f"    Total entries  : {len(self.all_fonts)} (across all sizes)")
+            print(f"    Khmer entries  : {len(self.khmer_fonts)}")
+            print(f"    English entries: {len(self.english_fonts)}")
 
     def _text_has_khmer(self, text: str) -> bool:
         """Check if *text* contains any Khmer Unicode characters."""
@@ -228,13 +247,27 @@ class FontManager:
         return font_ref
 
     def get_font_by_path_and_size(self, font_path: str, size: int) -> Any:
-        """Get font by path and size, loading and caching dynamically."""
+        """Get font by path and size, loading and caching dynamically.
+
+        Sizes that match one of the fonts loaded at startup (see `_load_fonts`)
+        are served from the permanent `_font_lookup` cache. Any other size is
+        served from a bounded LRU cache so that proportional font-size mode
+        (which samples a near-continuous range of sizes) can't grow memory
+        without bound over a long run.
+        """
         key = (str(font_path), int(size))
         if key in self._font_lookup:
             return self._font_lookup[key]
+        if key in self._dynamic_font_cache:
+            self._dynamic_font_cache.move_to_end(key)
+            return self._dynamic_font_cache[key]
         try:
             font = ImageFont.truetype(str(font_path), int(size))
-            self._font_lookup[key] = font
-            return font
         except Exception:
             return None
+        if self._dynamic_font_cache_size > 0:
+            self._dynamic_font_cache[key] = font
+            self._dynamic_font_cache.move_to_end(key)
+            while len(self._dynamic_font_cache) > self._dynamic_font_cache_size:
+                self._dynamic_font_cache.popitem(last=False)
+        return font
