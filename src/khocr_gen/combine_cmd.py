@@ -42,6 +42,8 @@ def run(args: argparse.Namespace) -> int:
             keep_raw=getattr(args, "keep_raw", False),
             jpeg_quality=args.jpeg_quality,
             map_size_gb=args.map_size_gb,
+            build_vocab=not getattr(args, "skip_vocab", False),
+            vocab_path=getattr(args, "vocab", None) or None,
             verbose=args.verbose,
         )
     except FileNotFoundError as exc:
@@ -54,6 +56,13 @@ def run(args: argparse.Namespace) -> int:
 
     for split, n in counts.items():
         print(f"   {split}: wrote {n} samples to {output_dir / split / 'lmdb'}")
+
+    if not getattr(args, "skip_vocab", False):
+        vocab_out = (
+            Path(args.vocab).expanduser().resolve() if args.vocab else output_dir / "vocab.json"
+        )
+        if vocab_out.exists():
+            print(f"   vocab: wrote merged vocab.json to {vocab_out}")
 
     print(f"\nCombine complete. Dataset -> {output_dir}")
     return 0
@@ -99,6 +108,17 @@ def add_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--map-size-gb", type=int, default=256, metavar="N", help="LMDB map size in GiB"
+    )
+    parser.add_argument(
+        "--vocab",
+        default=None,
+        metavar="FILE",
+        help="Path to write merged vocab.json; defaults to OUTPUT/vocab.json",
+    )
+    parser.add_argument(
+        "--skip-vocab",
+        action="store_true",
+        help="Do not build a merged vocab.json",
     )
     parser.add_argument(
         "--verbose", action="store_true", help="Print merge and LMDB packing progress"

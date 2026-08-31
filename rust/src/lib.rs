@@ -142,6 +142,17 @@ fn apply_brightness_contrast_rgb_rust(
     Ok(build_2d_array(py, result, h, w * 3))
 }
 
+#[pyfunction]
+fn apply_rotation_rgb_rust(
+    py: Python<'_>,
+    img: PyReadonlyArrayDyn<'_, u8>,
+    intensity: f32,
+) -> PyResult<Py<PyArray2<u8>>> {
+    let (slice, w, h, _c) = extract_3d_slice(&img)?;
+    let result = augmentation::apply_rotation_rgb(slice, w, h, intensity);
+    Ok(build_2d_array(py, result, h, w * 3))
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Font management
 // ══════════════════════════════════════════════════════════════════════════════
@@ -357,6 +368,7 @@ fn _rust_accel(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(apply_hsv_rgb_rust, m)?)?;
     m.add_function(wrap_pyfunction!(apply_brightness_contrast_rgb_rust, m)?)?;
+    m.add_function(wrap_pyfunction!(apply_rotation_rgb_rust, m)?)?;
 
     m.add_class::<RustFontManager>()?;
     m.add_class::<RustFontFace>()?;

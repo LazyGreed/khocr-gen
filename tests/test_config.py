@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import random
 
 import pytest
 
-from khocr_gen.config import AugMethodConfig, GenerationConfig, TextDecorationConfig
+from khocr_gen.config import (
+    TEXT_EFFECT_NAMES,
+    AugMethodConfig,
+    GenerationConfig,
+    TextDecorationConfig,
+    TextEffectConfig,
+)
 from khocr_gen.normalizer import NormalizerConfig
 
 
@@ -544,3 +551,54 @@ class TestTextDecorationConfig:
         deco = TextDecorationConfig(color_prob=1.5, underline_prob=-0.5)
         assert deco.color_prob == 1.0
         assert deco.underline_prob == 0.0
+
+
+class TestTextEffectConfig:
+    def test_defaults_off(self):
+        cfg = GenerationConfig()
+        assert not cfg.text_effect.enabled
+        for name in TEXT_EFFECT_NAMES:
+            assert getattr(cfg.text_effect, f"{name}_prob") == 0.0
+
+    def test_enabled_when_any_prob_set(self):
+        assert TextEffectConfig(glow_prob=0.3).enabled
+        assert TextEffectConfig(huge_prob=0.1).enabled
+
+    def test_probabilities_clamped(self):
+        eff = TextEffectConfig(glow_prob=1.5, shadow_prob=-0.5)
+        assert eff.glow_prob == 1.0
+        assert eff.shadow_prob == 0.0
+
+    def test_from_args_parses_all_flags(self):
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        argv = []
+        for i, name in enumerate(TEXT_EFFECT_NAMES):
+            argv += [f"--text-effect-{name}-prob", str(round(0.05 * (i + 1), 3))]
+        args = parser.parse_args(argv)
+        cfg = GenerationConfig.from_args(args)
+        for i, name in enumerate(TEXT_EFFECT_NAMES):
+            assert getattr(cfg.text_effect, f"{name}_prob") == round(0.05 * (i + 1), 3)
+
+    def test_to_dict_from_dict_roundtrip(self):
+        eff = TextEffectConfig(glow_prob=0.4, huge_prob=0.2)
+        cfg = GenerationConfig(text_effect=eff)
+        d = cfg.to_dict()
+        assert d["text_effect"]["glow_prob"] == 0.4
+        assert d["text_effect"]["huge_prob"] == 0.2
+        assert d["text_effect"]["tiny_prob"] == 0.0
+
+        rebuilt = GenerationConfig.from_dict(d)
+        assert rebuilt.text_effect.glow_prob == 0.4
+        assert rebuilt.text_effect.huge_prob == 0.2
+
+    def test_sample_picks_one_effect_when_forced(self):
+        from khocr_gen.rendering import ImageRenderer
+
+        random.seed(0)
+        assert ImageRenderer._sample_effect(TextEffectConfig(glow_prob=1.0)) == "glow"
+
+    def test_sample_returns_none_when_disabled(self):
+        from khocr_gen.rendering import ImageRenderer
+
+        assert ImageRenderer._sample_effect(TextEffectConfig()) is None

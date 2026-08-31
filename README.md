@@ -9,6 +9,7 @@ Synthetic OCR training data generator for mixed Khmer/English text.
 - **Mixed-script rendering:** per-span font selection for Khmer + English
 - **Variable line height:** sample per-image canvas height (fixed/variable/bucketed), with optional proportional font scaling and random padding, no glyph clipping
 - **Text decorations:** per-line color, underline, subscript/superscript, italic, and bold sampled at render time (can combine, isolated from augmentations)
+- **Text effects:** Canva-style per-line effects — huge/tiny sizing, transparency, drop shadow, glow, outline, hollow, echo, background highlight, neon, glitch, and pixel — mutually exclusive with each other, combinable with text decorations
 - **25 augmentation methods:** unified registry covering scanner/camera degradations and training-time transforms
 - **Rust acceleration:** 21/25 augmentation methods plus font glyph checking run through a native PyO3 extension, with automatic pure-Python fallback
 - **Isolated augmentation:** one effect per image, weighted by configurable probabilities
@@ -152,6 +153,24 @@ when no matching variant exists; random colors require `--color-mode 3`.
 khocr-gen generate --text-deco-color-prob 0.3 --text-deco-underline-prob 0.2 \
           --text-deco-bold-prob 0.2 --color-mode 3 ...
 ```
+
+### Text effects
+
+Canva-style per-line effects, sampled at render time alongside decorations
+(before augmentation). Unlike decorations, effects are mutually exclusive with
+each other — each probability is rolled independently in a fixed order and the
+first hit wins — but combine freely with `--text-deco-*`. Every effect keeps
+the underlying glyph shapes intact, since the rendered text is still the
+ground-truth OCR label.
+
+```text
+khocr-gen generate --text-effect-shadow-prob 0.1 --text-effect-glow-prob 0.1 \
+          --text-effect-outline-prob 0.1 --text-effect-huge-prob 0.05 ...
+```
+
+See [CLI_REFERENCE.md](docs/CLI_REFERENCE.md#rendering) for the full list
+of `--text-effect-*` flags (huge/tiny, transparent, shadow, glow, outline,
+hollow, echo, background, neon, glitch, pixel).
 
 ## Augmentation
 

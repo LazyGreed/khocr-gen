@@ -12,15 +12,16 @@ from typing import TYPE_CHECKING, Any
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from . import _rust_accel as _ra
 from .augmentation import _RGB_PREFERRED_METHODS, AUG_METHODS
+from .config import TEXT_EFFECT_NAMES
 from .line_height import sample_font_scale, sample_line_height, sample_vertical_padding_ratio
 from .logging import get_logger
 
 if TYPE_CHECKING:
-    from .config import AugMethodConfig, GenerationConfig
+    from .config import AugMethodConfig, GenerationConfig, TextEffectConfig
     from .fonts import FontManager
 
 HAS_PIL = True  # Import of PIL.Image above verifies this
@@ -44,6 +45,22 @@ _DECO_LIGHT_TEXT_COLORS = [
     (255, 200, 255),
     (255, 245, 160),
 ]
+
+# Bright, saturated colors for the "neon" text effect (RGB mode only).
+_NEON_COLORS_RGB = [
+    (255, 0, 180),
+    (0, 255, 255),
+    (57, 255, 20),
+    (255, 255, 0),
+    (255, 60, 0),
+    (180, 0, 255),
+]
+
+# Effects that draw an offset/blurred halo behind the glyphs via a rasterized
+# alpha mask (shadow, echo, glow, neon all share the same mask-composite path).
+_MASK_EFFECTS: frozenset[str] = frozenset({"shadow", "echo", "glow", "neon", "glitch", "pixel"})
+# Effects that resize the font instead of changing how glyphs are drawn.
+_SIZE_EFFECTS: frozenset[str] = frozenset({"huge", "tiny"})
 
 
 class _BoundedCache(dict):
@@ -76,6 +93,7 @@ class DecorStyle:
     color: bool = False  # request a single random line color (RGB mode only)
     sub_indices: list[int] = field(default_factory=list)
     super_indices: list[int] = field(default_factory=list)
+    effect: str | None = None  # one of TEXT_EFFECT_NAMES, or None
 
     @property
     def active(self) -> bool:
@@ -86,6 +104,7 @@ class DecorStyle:
             or self.color
             or bool(self.sub_indices)
             or bool(self.super_indices)
+            or self.effect is not None
         )
 
 
@@ -340,10 +359,11 @@ class ImageRenderer:
     # ── Text base rendering ─────────────────────────────────────────────────
 
     def _sample_decorations(self, text: str) -> DecorStyle:
-        """Sample a per-line decoration state from ``cfg.text_deco`` probabilities."""
+        """Sample a per-line decoration state from ``cfg.text_deco``/``cfg.text_effect``."""
         deco = self._cfg.text_deco
+        effect_cfg = self._cfg.text_effect
         style = DecorStyle()
-        if not deco.enabled or not text:
+        if not text or not (deco.enabled or effect_cfg.enabled):
             return style
 
         style.bold = random.random() < deco.bold_prob
@@ -360,7 +380,20 @@ class ImageRenderer:
                 candidates = [i for i in candidates if i not in chosen]
             if candidates and random.random() < deco.superscript_prob:
                 style.super_indices = random.sample(candidates, min(2, len(candidates)))
+
+        if effect_cfg.enabled:
+            style.effect = self._sample_effect(effect_cfg)
         return style
+
+    @staticmethod
+    def _sample_effect(cfg: TextEffectConfig) -> str | None:
+        """Weighted-pick at most one text effect: probabilities rolled in a fixed
+        order, first hit wins (Canva-style effects panels are single-select)."""
+        for name in TEXT_EFFECT_NAMES:
+            prob = getattr(cfg, f"{name}_prob")
+            if prob > 0.0 and random.random() < prob:
+                return name
+        return None
 
     @staticmethod
     def _sample_deco_color(bg_color: int | tuple[int, int, int]) -> tuple[int, int, int]:
@@ -373,8 +406,41 @@ class ImageRenderer:
         return random.choice(palette)
 
     @staticmethod
+    def _luminance(color: int | tuple[int, ...]) -> float:
+        if isinstance(color, tuple):
+            return 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
+        return float(color)
+
+    @classmethod
+    def _contrast_color(cls, ref_color: int | tuple[int, int, int]) -> int | tuple[int, int, int]:
+        """Pick a color that contrasts with *ref_color*'s luminance."""
+        is_dark_ref = cls._luminance(ref_color) <= 128
+        if isinstance(ref_color, tuple):
+            palette = _DECO_LIGHT_TEXT_COLORS if is_dark_ref else _DECO_DARK_TEXT_COLORS
+            return random.choice(palette)
+        return 220 if is_dark_ref else 40
+
+    @staticmethod
+    def _lerp_color(
+        a: int | tuple[int, ...], b: int | tuple[int, ...], t: float
+    ) -> int | tuple[int, ...]:
+        t = max(0.0, min(1.0, t))
+        if isinstance(a, tuple) and isinstance(b, tuple):
+            return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(len(a)))
+        av = a if isinstance(a, (int, float)) else a[0]
+        bv = b if isinstance(b, (int, float)) else b[0]
+        return round(av + (bv - av) * t)
+
+    @staticmethod
+    def _scale_color(color: int | tuple[int, ...], factor: float) -> int | tuple[int, ...]:
+        factor = max(0.0, factor)
+        if isinstance(color, tuple):
+            return tuple(max(0, min(255, round(c * factor))) for c in color)
+        return max(0, min(255, round(color * factor)))
+
+    @staticmethod
     def _deco_names(style: DecorStyle) -> list[str]:
-        """Active decoration names for metadata (best-effort)."""
+        """Active decoration/effect names for metadata (best-effort)."""
         names: list[str] = []
         if style.bold:
             names.append("bold")
@@ -388,7 +454,108 @@ class ImageRenderer:
             names.append("subscript")
         if style.super_indices:
             names.append("superscript")
+        if style.effect:
+            names.append(style.effect)
         return names
+
+    @staticmethod
+    def _effect_margin(effect: str | None, base_size: int) -> int:
+        """Extra padding (px) an effect needs so blur/offset/stroke never clips."""
+        if effect in ("outline", "hollow"):
+            return max(2, round(base_size * 0.09))
+        if effect == "shadow":
+            return max(3, round(base_size * 0.2))
+        if effect in ("glow", "neon"):
+            return max(4, round(base_size * 0.4))
+        if effect == "echo":
+            return max(4, round(base_size * 0.35))
+        if effect == "glitch":
+            return max(2, round(base_size * 0.08))
+        if effect == "background":
+            return max(3, round(base_size * 0.15))
+        return 0
+
+    def _composite_mask_effect(
+        self,
+        img: Image.Image,
+        mask: Image.Image,
+        effect: str,
+        fill: int | tuple[int, int, int],
+        bg_color: int | tuple[int, int, int],
+        base_size: int,
+    ) -> None:
+        """Composite a rasterized-mask effect (shadow/echo/glow/neon/glitch/pixel)
+        onto *img* in place. *mask* is an "L" image where 255 marks glyph ink."""
+        if effect == "shadow":
+            offset = max(2, round(base_size * 0.1))
+            shadow_color = self._scale_color(bg_color, 0.3)
+            shifted = Image.new("L", img.size, 0)
+            shifted.paste(mask, (offset, offset))
+            blur_r = max(1, round(base_size * 0.06))
+            shifted = shifted.filter(ImageFilter.GaussianBlur(blur_r))
+            img.paste(shadow_color, (0, 0), shifted)
+            img.paste(fill, (0, 0), mask)
+            return
+
+        if effect == "echo":
+            copies = random.randint(2, 3)
+            step = max(2, round(base_size * 0.09))
+            for i in range(copies, 0, -1):
+                shifted = Image.new("L", img.size, 0)
+                shifted.paste(mask, (step * i, step * i))
+                alpha_scale = 0.55 * (1 - (i - 1) / copies)
+                shifted = shifted.point(lambda v, s=alpha_scale: int(v * s))
+                img.paste(fill, (0, 0), shifted)
+            img.paste(fill, (0, 0), mask)
+            return
+
+        if effect in ("glow", "neon"):
+            glow_color = fill
+            if effect == "neon" and isinstance(fill, tuple):
+                glow_color = random.choice(_NEON_COLORS_RGB)
+            blur_r = max(3, round(base_size * (0.4 if effect == "neon" else 0.28)))
+            glow_mask = mask.filter(ImageFilter.GaussianBlur(blur_r))
+            glow_mask = glow_mask.point(lambda v: min(255, int(v * 2.2)))
+            img.paste(glow_color, (0, 0), glow_mask)
+            if effect == "neon":
+                tight = mask.filter(ImageFilter.GaussianBlur(max(1, blur_r // 3)))
+                tight = tight.point(lambda v: min(255, int(v * 1.6)))
+                img.paste(glow_color, (0, 0), tight)
+            img.paste(glow_color if effect == "neon" else fill, (0, 0), mask)
+            return
+
+        if effect == "glitch":
+            offset = min(3, max(1, round(base_size * 0.035)))
+            if isinstance(fill, tuple):
+                color_a, color_b = (255, 60, 60), (60, 220, 255)
+            else:
+                color_a, color_b = self._scale_color(fill, 1.2), self._scale_color(fill, 0.6)
+            left = Image.new("L", img.size, 0)
+            left.paste(mask, (-offset, 0))
+            right = Image.new("L", img.size, 0)
+            right.paste(mask, (offset, 0))
+            img.paste(color_a, (0, 0), left)
+            img.paste(color_b, (0, 0), right)
+            img.paste(fill, (0, 0), mask)
+            return
+
+        if effect == "pixel":
+            bbox = mask.getbbox()
+            if bbox is None:
+                return
+            x0, y0, x1, y1 = bbox
+            w, h = x1 - x0, y1 - y0
+            if w <= 0 or h <= 0:
+                return
+            factor = random.uniform(2.5, 4.5)
+            small_w = max(1, round(w / factor))
+            small_h = max(1, round(h / factor))
+            crop = mask.crop(bbox)
+            blocky = crop.resize((small_w, small_h), Image.NEAREST).resize((w, h), Image.NEAREST)
+            mask = mask.copy()
+            mask.paste(blocky, (x0, y0))
+            img.paste(fill, (0, 0), mask)
+            return
 
     def _build_deco_runs(
         self, text: str, base_font: Any, base_ascent: int, base_size: int, style: DecorStyle
@@ -494,6 +661,22 @@ class ImageRenderer:
             if font is None:
                 return None
 
+        # 1b. "huge"/"tiny" effects resize the chosen font relative to itself,
+        # regardless of which branch above picked it (variant or plain).
+        if style.effect in _SIZE_EFFECTS:
+            font_path = getattr(font, "path", None)
+            if font_path is not None:
+                cur_size = int(getattr(font, "size", 28))
+                mult = (
+                    random.uniform(1.6, 2.3)
+                    if style.effect == "huge"
+                    else random.uniform(0.35, 0.55)
+                )
+                new_size = max(8, min(400, round(cur_size * mult)))
+                resized = self.font_manager.get_font_by_path_and_size(font_path, new_size)
+                if resized is not None:
+                    font = resized
+
         if not self._is_text_supported(font, text):
             return None
         base_size = int(getattr(font, "size", 28))
@@ -522,9 +705,11 @@ class ImageRenderer:
         if style.underline:
             rel_bottom = max(rel_bottom, descent + 2 + underline_th)
 
-        # 4. Canvas sizing (never clips).
-        padding_x = random.randint(10, 30) if augment else 20
-        padding_y = random.randint(5, 15) if augment else 10
+        # 4. Canvas sizing (never clips); effects that draw outside the glyph
+        # ink (blur halos, offset copies, strokes) get extra margin.
+        effect_margin = self._effect_margin(style.effect, base_size)
+        padding_x = (random.randint(10, 30) if augment else 20) + effect_margin
+        padding_y = (random.randint(5, 15) if augment else 10) + effect_margin
         img_w = max(1, total_w + padding_x * 2)
         img_h = max(1, round((rel_bottom - rel_top) + padding_y * 2))
 
@@ -537,21 +722,65 @@ class ImageRenderer:
         img = Image.new(self._pil_mode, (img_w, img_h), color=bg_color)
         draw = ImageDraw.Draw(img)
         baseline_y = padding_y - rel_top + (random.randint(-2, 2) if augment else 0)
-        x = padding_x + (random.randint(-3, 3) if augment else 0)
+        start_x = padding_x + (random.randint(-3, 3) if augment else 0)
 
+        run_positions: list[tuple[str, Any, tuple[int, int]]] = []
+        cursor_x = start_x
         for (seg, fnt, dy), w in zip(runs, widths, strict=True):
             try:
                 run_ascent, _ = fnt.getmetrics()
             except Exception:
                 run_ascent = fnt.getbbox(seg)[3]
-            draw.text((x, baseline_y + dy - run_ascent), seg, font=fnt, fill=fill)
-            x += w
+            run_positions.append((seg, fnt, (cursor_x, round(baseline_y + dy - run_ascent))))
+            cursor_x += w
+
+        # 5. Draw the line, dispatching on the sampled effect (if any).
+        effect = style.effect
+        if effect == "background":
+            box_color = self._contrast_color(fill)
+            pad = max(3, round(base_size * 0.12))
+            draw.rectangle(
+                [
+                    start_x - pad,
+                    baseline_y + rel_top - pad,
+                    start_x + total_w + pad,
+                    baseline_y + rel_bottom + pad,
+                ],
+                fill=box_color,
+            )
+            for seg, fnt, pos in run_positions:
+                draw.text(pos, seg, font=fnt, fill=fill)
+        elif effect in ("outline", "hollow"):
+            stroke_w = max(1, round(base_size * 0.07))
+            interior = fill if effect == "outline" else bg_color
+            stroke_color = self._contrast_color(fill) if effect == "outline" else fill
+            for seg, fnt, pos in run_positions:
+                draw.text(
+                    pos,
+                    seg,
+                    font=fnt,
+                    fill=interior,
+                    stroke_width=stroke_w,
+                    stroke_fill=stroke_color,
+                )
+        elif effect == "transparent":
+            alpha = random.uniform(0.4, 0.7)
+            blended = self._lerp_color(bg_color, fill, alpha)
+            for seg, fnt, pos in run_positions:
+                draw.text(pos, seg, font=fnt, fill=blended)
+        elif effect in _MASK_EFFECTS:
+            mask = Image.new("L", (img_w, img_h), 0)
+            mask_draw = ImageDraw.Draw(mask)
+            for seg, fnt, pos in run_positions:
+                mask_draw.text(pos, seg, font=fnt, fill=255)
+            self._composite_mask_effect(img, mask, effect, fill, bg_color, base_size)
+        else:
+            for seg, fnt, pos in run_positions:
+                draw.text(pos, seg, font=fnt, fill=fill)
 
         if style.underline:
             y_ul = baseline_y + descent + 2
-            draw.line(
-                [(padding_x, y_ul), (padding_x + total_w, y_ul)], fill=fill, width=underline_th
-            )
+            draw.line([(start_x, y_ul), (start_x + total_w, y_ul)], fill=fill, width=underline_th)
 
         return np.array(img), font
 

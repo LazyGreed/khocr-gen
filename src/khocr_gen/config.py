@@ -160,6 +160,100 @@ class TextDecorationConfig:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Per-line text effect config (Canva-style effects: shadow, glow, outline, ...)
+# ──────────────────────────────────────────────────────────────────────────────
+
+TEXT_EFFECT_NAMES: tuple[str, ...] = (
+    "background",
+    "echo",
+    "glitch",
+    "glow",
+    "hollow",
+    "huge",
+    "neon",
+    "outline",
+    "pixel",
+    "shadow",
+    "tiny",
+    "transparent",
+)
+
+
+@dataclass
+class TextEffectConfig:
+    """Weighted, mutually-exclusive per-line text effects sampled at render time.
+
+    Mirrors a Canva-style effects panel: at most one effect applies per line
+    (each probability is rolled independently in a fixed order and the first
+    hit wins, so effective probabilities can overlap when several are set),
+    combined with the independent decorations in `TextDecorationConfig`. All
+    effects are constrained to keep the underlying glyphs legible, since the
+    rendered text is still the ground-truth OCR label.
+    """
+
+    background_prob: float = 0.0  # highlight box behind the line
+    echo_prob: float = 0.0  # faint offset duplicate copies (ghost/echo)
+    glitch_prob: float = 0.0  # small offset colour-split copies
+    glow_prob: float = 0.0  # soft blurred halo behind the text
+    hollow_prob: float = 0.0  # outline-only glyphs, background-colour interior
+    huge_prob: float = 0.0  # oversized text relative to the canvas
+    neon_prob: float = 0.0  # bright saturated fill with a neon-sign glow
+    outline_prob: float = 0.0  # solid fill with a contrasting stroke
+    pixel_prob: float = 0.0  # blocky/pixelated glyph edges
+    shadow_prob: float = 0.0  # offset blurred drop shadow
+    tiny_prob: float = 0.0  # undersized text relative to the canvas
+    transparent_prob: float = 0.0  # partially see-through fill
+
+    def __post_init__(self) -> None:
+        for name in TEXT_EFFECT_NAMES:
+            attr = f"{name}_prob"
+            setattr(self, attr, float(max(0.0, min(1.0, getattr(self, attr)))))
+
+    @property
+    def enabled(self) -> bool:
+        return any(getattr(self, f"{name}_prob") > 0.0 for name in TEXT_EFFECT_NAMES)
+
+    @staticmethod
+    def add_args(parser: argparse.ArgumentParser) -> None:
+        g = parser.add_argument_group(
+            "Text effects",
+            "Canva-style per-line text effects applied at render time (mutually exclusive "
+            "with each other; combine freely with --text-deco-* flags). Each probability is "
+            "rolled independently in a fixed order and the first hit wins.",
+        )
+        help_text = {
+            "background": "Probability of a highlight box behind the line",
+            "echo": "Probability of faint offset duplicate (echo/ghost) copies",
+            "glitch": "Probability of a small offset colour-split glitch look",
+            "glow": "Probability of a soft blurred glow halo behind the text",
+            "hollow": "Probability of outline-only glyphs with a background-colour interior",
+            "huge": "Probability of oversized text relative to the canvas",
+            "neon": "Probability of a bright neon-sign fill and glow",
+            "outline": "Probability of a solid fill with a contrasting stroke outline",
+            "pixel": "Probability of blocky/pixelated glyph edges",
+            "shadow": "Probability of an offset blurred drop shadow",
+            "tiny": "Probability of undersized text relative to the canvas",
+            "transparent": "Probability of a partially see-through fill",
+        }
+        for name in TEXT_EFFECT_NAMES:
+            g.add_argument(
+                f"--text-effect-{name}-prob",
+                type=float,
+                default=None,
+                metavar="F",
+                help=f"{help_text[name]} (default: 0)",
+            )
+
+    @classmethod
+    def from_args(cls, args: argparse.Namespace) -> TextEffectConfig:
+        kwargs: dict[str, float] = {}
+        for name in TEXT_EFFECT_NAMES:
+            value = getattr(args, f"text_effect_{name}_prob", None)
+            kwargs[f"{name}_prob"] = float(value) if value is not None else 0.0
+        return cls(**kwargs)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -396,6 +490,9 @@ class GenerationConfig:
 
     # ── Text decorations ──────────────────────────────────────────────────
     text_deco: TextDecorationConfig = field(default_factory=TextDecorationConfig)
+
+    # ── Text effects (shadow, glow, outline, ...) ───────────────────────────
+    text_effect: TextEffectConfig = field(default_factory=TextEffectConfig)
 
     # ───────────────────────────────────────────────────────────────────────
     # Split ratio resolution
@@ -912,6 +1009,9 @@ class GenerationConfig:
         # ── Text decoration ──────────────────────────────────────────────────
         TextDecorationConfig.add_args(parser)
 
+        # ── Text effects ────────────────────────────────────────────────────
+        TextEffectConfig.add_args(parser)
+
         # ── Augmentation methods: prob, min, max per method ────────────────
         g_aug = parser.add_argument_group(
             "Augmentation methods",
@@ -1032,6 +1132,7 @@ class GenerationConfig:
             lmdb_map_size_gb=int(getattr(args, "lmdb_map_size_gb", 256)),
             dpi_mode=str(dpi_mode),
             text_deco=TextDecorationConfig.from_args(args),
+            text_effect=TextEffectConfig.from_args(args),
             normalizer=NormalizerConfig.from_args(args),
         )
         for attr_name, aug_cfg in aug_kwargs.items():
@@ -1083,6 +1184,10 @@ class GenerationConfig:
                     "italic_prob": value.italic_prob,
                     "bold_prob": value.bold_prob,
                 }
+            elif isinstance(value, TextEffectConfig):
+                result[f.name] = {
+                    f"{name}_prob": getattr(value, f"{name}_prob") for name in TEXT_EFFECT_NAMES
+                }
             else:
                 result[f.name] = value
         return result
@@ -1121,6 +1226,13 @@ class GenerationConfig:
                     superscript_prob=float(value.get("superscript_prob", 0.0)),
                     italic_prob=float(value.get("italic_prob", 0.0)),
                     bold_prob=float(value.get("bold_prob", 0.0)),
+                )
+            elif key == "text_effect" and isinstance(value, dict):
+                other_kwargs[key] = TextEffectConfig(
+                    **{
+                        f"{name}_prob": float(value.get(f"{name}_prob", 0.0))
+                        for name in TEXT_EFFECT_NAMES
+                    }
                 )
             elif key not in aug_method_names:
                 other_kwargs[key] = value

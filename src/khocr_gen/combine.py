@@ -9,6 +9,7 @@ Inputs may use different formats independently per split; the merged output is a
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,6 +22,18 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 SPLITS: tuple[str, ...] = ("train", "val", "test")
+
+
+def _write_vocab(chars: set[str], output_path: Path) -> None:
+    """Write a vocab.json covering *chars*, with "<unk>" reserved at index 0."""
+    vocab: dict[str, int] = {"<unk>": 0}
+    for idx, ch in enumerate(sorted(chars), start=1):
+        if ch != "<unk>":
+            vocab[ch] = idx
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as fh:
+        json.dump(vocab, fh, indent=2, ensure_ascii=False)
 
 
 def _detect_split_format(split_dir: Path) -> str | None:
@@ -96,6 +109,8 @@ def combine_datasets(
     keep_raw: bool = False,
     jpeg_quality: int = 90,
     map_size_gb: int = 256,
+    build_vocab: bool = True,
+    vocab_path: str | Path | None = None,
     verbose: bool = False,
 ) -> dict[str, int]:
     """Merge multiple datasets into *output_dir*, per split, as LMDB.
@@ -110,6 +125,10 @@ def combine_datasets(
         keep_raw: If True, keep the intermediate images/ directory after LMDB pack.
         jpeg_quality: JPEG quality for stored images (1-100).
         map_size_gb: LMDB map size in GiB.
+        build_vocab: If True, write a merged vocab.json covering every character
+            across all merged splits.
+        vocab_path: Where to write the merged vocab.json; defaults to
+            `output_dir/vocab.json`.
         verbose: Print progress messages.
 
     Returns:
@@ -123,6 +142,7 @@ def combine_datasets(
             raise FileNotFoundError(f"Dataset not found: {root}")
 
     counts: dict[str, int] = {}
+    vocab_chars: set[str] = set()
 
     for split in SPLITS:
         # Collect all input splits that exist
@@ -158,6 +178,8 @@ def combine_datasets(
                     img_name = f"img_{n:09d}{ext}"
                     (merged_images / img_name).write_bytes(img_bytes)
                     lf.write(f"{img_name}\t{text}\n")
+                    if build_vocab:
+                        vocab_chars.update(text)
 
         if n == 0:
             merged_labels.unlink(missing_ok=True)
@@ -182,5 +204,11 @@ def combine_datasets(
 
         if not keep_raw:
             shutil.rmtree(merged_images)
+
+    if build_vocab and vocab_chars:
+        vp = Path(vocab_path).expanduser().resolve() if vocab_path else out_root / "vocab.json"
+        if verbose:
+            print(f"  Writing merged vocab ({len(vocab_chars)} unique characters) -> {vp}")
+        _write_vocab(vocab_chars, vp)
 
     return counts

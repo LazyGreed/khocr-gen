@@ -329,12 +329,27 @@ pub fn apply_rotation(img: &[u8], w: usize, h: usize, intensity: f32) -> Vec<u8>
     let cos_a = angle_rad.cos();
     let sin_a = angle_rad.sin();
 
+    // Rotating in-place at the original (w, h) size clips content that sits
+    // near the border (the rotated corners fall outside the frame). Instead,
+    // sample as if we rotated into a canvas large enough to hold the fully
+    // rotated image, then scaled that canvas back down to (w, h). Since both
+    // steps are affine, this is folded into a single inverse-mapping pass
+    // rather than materializing the larger intermediate canvas.
+    let new_w = (h as f32 * sin_a.abs() + w as f32 * cos_a.abs()).round();
+    let new_h = (h as f32 * cos_a.abs() + w as f32 * sin_a.abs()).round();
+    let scale_x = new_w / w as f32;
+    let scale_y = new_h / h as f32;
+    let ecx = new_w / 2.0;
+    let ecy = new_h / 2.0;
+
     let mut result = vec![bg; w * h];
     result.par_chunks_mut(w).enumerate().for_each(|(y, row)| {
         for x in 0..w {
             // Inverse transform: find source pixel
-            let dx = x as f32 - cx;
-            let dy = y as f32 - cy;
+            let ex = x as f32 * scale_x;
+            let ey = y as f32 * scale_y;
+            let dx = ex - ecx;
+            let dy = ey - ecy;
             let sx = cos_a * dx + sin_a * dy + cx;
             let sy = -sin_a * dx + cos_a * dy + cy;
 
@@ -354,6 +369,74 @@ pub fn apply_rotation(img: &[u8], w: usize, h: usize, intensity: f32) -> Vec<u8>
                 let val = (1.0 - fy) * ((1.0 - fx) * a + fx * b)
                     + fy * ((1.0 - fx) * c + fx * d);
                 row[x] = clamp_f32_to_u8(val);
+            }
+        }
+    });
+
+    result
+}
+
+/// RGB counterpart of `apply_rotation`: draws a single shared angle and
+/// applies it to all three channels together (per-channel independent
+/// randomness would desynchronise the channels and introduce chromatic
+/// fringing), and estimates the border fill color per-channel so tinted
+/// backgrounds don't get replaced by a flat gray patch.
+pub fn apply_rotation_rgb(img: &[u8], w: usize, h: usize, intensity: f32) -> Vec<u8> {
+    let mut rng = rand::thread_rng();
+    let max_angle = 0.5 + intensity * 7.5;
+    let angle: f32 = rng.gen_range(-max_angle..max_angle);
+
+    if angle.abs() < 0.01 {
+        return img.to_vec();
+    }
+
+    let bg = estimate_bg_rgb_flat(img, w, h);
+    let angle_rad = angle.to_radians();
+    let cx = w as f32 / 2.0;
+    let cy = h as f32 / 2.0;
+
+    let cos_a = angle_rad.cos();
+    let sin_a = angle_rad.sin();
+
+    let new_w = (h as f32 * sin_a.abs() + w as f32 * cos_a.abs()).round();
+    let new_h = (h as f32 * cos_a.abs() + w as f32 * sin_a.abs()).round();
+    let scale_x = new_w / w as f32;
+    let scale_y = new_h / h as f32;
+    let ecx = new_w / 2.0;
+    let ecy = new_h / 2.0;
+
+    let mut result = vec![0u8; w * h * 3];
+    result.par_chunks_mut(w * 3).enumerate().for_each(|(y, row)| {
+        for x in 0..w {
+            let ex = x as f32 * scale_x;
+            let ey = y as f32 * scale_y;
+            let dx = ex - ecx;
+            let dy = ey - ecy;
+            let sx = cos_a * dx + sin_a * dy + cx;
+            let sy = -sin_a * dx + cos_a * dy + cy;
+
+            let px = x * 3;
+            if sx >= 0.0 && sx < w as f32 - 1.0 && sy >= 0.0 && sy < h as f32 - 1.0 {
+                let fx = sx.fract();
+                let fy = sy.fract();
+                let ix = sx as usize;
+                let iy = sy as usize;
+                let ix1 = (ix + 1).min(w - 1);
+                let iy1 = (iy + 1).min(h - 1);
+
+                for c in 0..3 {
+                    let a = img[(iy * w + ix) * 3 + c] as f32;
+                    let b = img[(iy * w + ix1) * 3 + c] as f32;
+                    let cc = img[(iy1 * w + ix) * 3 + c] as f32;
+                    let d = img[(iy1 * w + ix1) * 3 + c] as f32;
+                    let val = (1.0 - fy) * ((1.0 - fx) * a + fx * b)
+                        + fy * ((1.0 - fx) * cc + fx * d);
+                    row[px + c] = clamp_f32_to_u8(val);
+                }
+            } else {
+                row[px] = bg[0];
+                row[px + 1] = bg[1];
+                row[px + 2] = bg[2];
             }
         }
     });
@@ -853,6 +936,34 @@ fn estimate_bg_gray_flat(img: &[u8], w: usize, h: usize) -> u8 {
     } else {
         samples[mid]
     }
+}
+
+/// Per-channel counterpart of `estimate_bg_gray_flat` for interleaved RGB
+/// buffers, so tinted backgrounds are preserved rather than collapsed to gray.
+fn estimate_bg_rgb_flat(img: &[u8], w: usize, h: usize) -> [u8; 3] {
+    if w == 0 || h == 0 {
+        return [255, 255, 255];
+    }
+    let mut result = [0u8; 3];
+    for c in 0..3 {
+        let mut samples: Vec<u8> = Vec::with_capacity((h + w) * 2);
+        for x in 0..w {
+            samples.push(img[x * 3 + c]);
+            samples.push(img[((h - 1) * w + x) * 3 + c]);
+        }
+        for row in 1..h.saturating_sub(1) {
+            samples.push(img[(row * w) * 3 + c]);
+            samples.push(img[(row * w + w - 1) * 3 + c]);
+        }
+        samples.sort_unstable();
+        let mid = samples.len() / 2;
+        result[c] = if samples.len() % 2 == 0 {
+            ((samples[mid - 1] as u16 + samples[mid] as u16) / 2) as u8
+        } else {
+            samples[mid]
+        };
+    }
+    result
 }
 
 fn erode_gray(img: &[u8], w: usize, h: usize, ksize: usize) -> Vec<u8> {

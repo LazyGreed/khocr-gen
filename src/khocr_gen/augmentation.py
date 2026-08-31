@@ -94,6 +94,20 @@ def _estimate_bg(img: np.ndarray) -> int:
     return int(np.median(border))
 
 
+def _estimate_bg_per_channel(img: np.ndarray) -> tuple[float, ...]:
+    """Estimate background color from image border, preserving channel tint.
+
+    Unlike ``_estimate_bg`` (which collapses to a single grayscale value),
+    this keeps color information so fill regions blend into tinted
+    backgrounds (e.g. paper-tone or colored palettes) instead of showing up
+    as a flat gray patch.
+    """
+    if img.ndim == 2:
+        return (float(_estimate_bg(img)),)
+    border = np.concatenate((img[0, :, :], img[-1, :, :], img[:, 0, :], img[:, -1, :]))
+    return tuple(float(v) for v in np.median(border, axis=0))
+
+
 # ── Sauvola ───────────────────────────────────────────────────────────────────
 
 
@@ -318,18 +332,30 @@ def apply_rotation(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarr
         return img
 
     h, w = img.shape[:2]
-    bg = _estimate_bg(img)
     cx, cy = w / 2.0, h / 2.0
     M = cv2.getRotationMatrix2D((cx, cy), angle, 1.0)
-    border_val: tuple[float, ...] = (float(bg),) if img.ndim == 2 else (float(bg),) * img.shape[2]
+
+    # Expand the canvas to fully contain the rotated content (otherwise corners
+    # get clipped), then resize back to the original size so callers get the
+    # same output dimensions.
+    cos = abs(M[0, 0])
+    sin = abs(M[0, 1])
+    new_w = round(h * sin + w * cos)
+    new_h = round(h * cos + w * sin)
+    M[0, 2] += (new_w / 2.0) - cx
+    M[1, 2] += (new_h / 2.0) - cy
+
+    border_val = _estimate_bg_per_channel(img)
     rotated = cv2.warpAffine(
         img,
         M,
-        (w, h),
+        (new_w, new_h),
         flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_CONSTANT,
         borderValue=border_val,
     )
+    if (new_w, new_h) != (w, h):
+        rotated = cv2.resize(rotated, (w, h), interpolation=cv2.INTER_LINEAR)
     return rotated
 
 
@@ -832,6 +858,7 @@ _RGB_PREFERRED_METHODS: frozenset[str] = frozenset(
         "reverse",
         "brightness_contrast",
         "gradient_illumination",
+        "rotation",
     }
 )
 
@@ -900,12 +927,13 @@ _RUST_METHODS = [
 # error "'ndarray' object cannot be converted to 'PyArray<T, D>'". Wrap them so
 # RGB input is collapsed to grayscale, transformed once, and expanded back to
 # RGB. Applying the kernel per-channel would be wrong for the many methods that
-# draw fresh randomness each call (rotation, perspective, elastic, geo_warp,
-# salt_pepper, random_crop, ...): each channel would get a different transform,
+# draw fresh randomness each call (perspective, elastic, geo_warp, salt_pepper,
+# random_crop, ...): each channel would get a different transform,
 # desynchronising the channels and introducing chromatic fringing. A single
 # grayscale pass keeps the three channels consistent. (The RGB-preferred methods
-# -- hsv, reverse, brightness_contrast -- are already RGB-aware wrappers exported
-# by _rust_accel and are excluded here.)
+# -- hsv, reverse, brightness_contrast, rotation -- are already RGB-aware
+# wrappers exported by _rust_accel, drawing one shared random draw and applying
+# it to all channels together, and are excluded here.)
 _GRAYSCALE_ONLY_RUST_METHODS: frozenset[str] = frozenset(_RUST_METHODS) - _RGB_PREFERRED_METHODS
 
 

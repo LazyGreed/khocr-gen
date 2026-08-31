@@ -65,7 +65,7 @@ _AUG_FUNCTIONS: list[tuple[str, bool]] = [
     ("apply_salt_pepper", False),
     ("apply_background_texture", False),
     ("apply_jpeg_compression", False),
-    ("apply_rotation", False),
+    ("apply_rotation", True),
     ("apply_lowdpi", False),
     ("apply_oversample", False),
     ("apply_perspective", False),

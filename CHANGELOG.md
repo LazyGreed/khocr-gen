@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-08-13
+
+### Added
+- Canva-style per-line text effects (`TextEffectConfig`, `rendering.py`): huge/tiny
+  sizing, transparency, drop shadow, glow, outline, hollow, echo, background
+  highlight, neon, and glitch/pixel looks, sampled at render time alongside the
+  existing text decorations. Effects are mutually exclusive with each other (each
+  probability is rolled independently in a fixed order, first hit wins — mirroring a
+  single-select effects panel) but combine freely with `--text-deco-*`. New
+  `--text-effect-{background,echo,glitch,glow,hollow,huge,neon,outline,pixel,shadow,
+  tiny,transparent}-prob` CLI flags (default 0, disabled), YAML-configurable, and
+  recorded in the `decorations` metadata field alongside bold/italic/etc. Every effect
+  is constrained to keep the underlying glyph shapes legible, since the rendered text
+  is still the ground-truth OCR label.
+- `khocr-gen combine` now also merges vocabularies: `combine_datasets` (`combine.py`)
+  accumulates every character written to each split's merged `labels.txt` (no extra
+  read pass) and writes a merged `vocab.json` to the output directory, matching the
+  `<unk>: 0`-reserved format `DatasetGenerator._build_vocab` produces for `generate`.
+  New `--vocab FILE` (defaults to `OUTPUT/vocab.json`) and `--skip-vocab` flags on the
+  `combine` CLI, both YAML-configurable via `configs/combine.yml`. Previously, combined
+  datasets had no `vocab.json` at all even though every input dataset had one.
+
 ## [0.1.9] - 2026-08-13
 
 ### Fixed

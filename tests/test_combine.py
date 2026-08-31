@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 
 import numpy as np
 
@@ -135,3 +136,59 @@ class TestCombineDatasets:
 
         assert counts["val"] == 1
         assert counts["train"] == 4
+
+
+class TestCombineVocab:
+    def test_merges_vocab_across_inputs(self, tmp_path):
+        ds1 = tmp_path / "ds1"
+        ds2 = tmp_path / "ds2"
+        _make_raw_split(ds1 / "train", 2, "raw")
+        _make_lmdb_split(ds2 / "train", 2, "lmdb", tmp_path)
+
+        out_dir = tmp_path / "merged"
+        combine_datasets([ds1, ds2], out_dir)
+
+        vocab_path = out_dir / "vocab.json"
+        assert vocab_path.exists()
+        vocab = json.loads(vocab_path.read_text(encoding="utf-8"))
+
+        assert vocab["<unk>"] == 0
+        expected_chars: set[str] = set()
+        for prefix, n in (("raw", 2), ("lmdb", 2)):
+            for i in range(n):
+                expected_chars.update(f"{prefix}-text-{i}")
+        assert set(vocab) - {"<unk>"} == expected_chars
+        # indices are unique and contiguous starting at 0
+        assert sorted(vocab.values()) == list(range(len(vocab)))
+
+    def test_skip_vocab_flag_disables_vocab_file(self, tmp_path):
+        ds1 = tmp_path / "ds1"
+        _make_raw_split(ds1 / "train", 2, "raw")
+
+        out_dir = tmp_path / "merged"
+        combine_datasets([ds1], out_dir, build_vocab=False)
+
+        assert not (out_dir / "vocab.json").exists()
+
+    def test_custom_vocab_path(self, tmp_path):
+        ds1 = tmp_path / "ds1"
+        _make_raw_split(ds1 / "train", 2, "raw")
+
+        out_dir = tmp_path / "merged"
+        custom_vocab = tmp_path / "custom" / "vocab.json"
+        combine_datasets([ds1], out_dir, vocab_path=custom_vocab)
+
+        assert custom_vocab.exists()
+        assert not (out_dir / "vocab.json").exists()
+
+
+class TestCombineCmdVocabArgs:
+    def test_accepts_vocab_and_skip_vocab_flags(self):
+        parser = argparse.ArgumentParser()
+        combine_cmd.add_args(parser)
+        ns = parser.parse_args(["data1", "--vocab", "out/vocab.json"])
+        assert ns.vocab == "out/vocab.json"
+        assert ns.skip_vocab is False
+
+        ns2 = parser.parse_args(["data1", "--skip-vocab"])
+        assert ns2.skip_vocab is True

@@ -250,6 +250,28 @@ Random color requires `color-mode: 3`.
 - `text-deco-italic-prob` — italic via a real italic/oblique variant font
 - `text-deco-bold-prob` — bold via a real bold variant font
 
+## Text effects
+
+Canva-style per-line effects applied at render time (before augmentation), on top of
+the same clean canvas as text decorations. Unlike decorations, effects are
+**mutually exclusive** with each other: each probability is rolled independently in
+a fixed order and the first hit wins, so at most one effect applies per line. They
+combine freely with `text-deco-*`. Default `0` disables an effect. Every effect keeps
+the underlying glyph shapes intact — the rendered text is still the ground-truth label.
+
+- `text-effect-background-prob` — highlight box behind the line
+- `text-effect-echo-prob` — faint offset duplicate (echo/ghost) copies
+- `text-effect-glitch-prob` — small offset colour-split copies
+- `text-effect-glow-prob` — soft blurred halo behind the text
+- `text-effect-hollow-prob` — outline-only glyphs, background-colour interior
+- `text-effect-huge-prob` — oversized text relative to the canvas
+- `text-effect-neon-prob` — bright saturated fill with a neon-sign glow
+- `text-effect-outline-prob` — solid fill with a contrasting stroke
+- `text-effect-pixel-prob` — blocky/pixelated glyph edges
+- `text-effect-shadow-prob` — offset blurred drop shadow
+- `text-effect-tiny-prob` — undersized text relative to the canvas
+- `text-effect-transparent-prob` — partially see-through fill
+
 ## Augmentation Method Fields
 
 Each augmentation method is configured with three values:
@@ -296,6 +318,8 @@ overwrite: false
 keep-raw: false
 jpeg-quality: 90
 map-size-gb: 256
+vocab: null           # defaults to OUTPUT/vocab.json
+skip-vocab: false
 verbose: true
 ```
 

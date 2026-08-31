@@ -54,6 +54,22 @@ khocr-gen generate --corpus corpus/corpus.txt --storage both
 | `--text-deco-superscript-prob F` | float | 0 | Probability of raising 1–2 random ASCII chars |
 | `--text-deco-italic-prob F` | float | 0 | Probability of italic rendering via a real italic/oblique variant font (skipped when none exists) |
 | `--text-deco-bold-prob F` | float | 0 | Probability of bold rendering via a real bold variant font (skipped when none exists) |
+| `--text-effect-background-prob F` | float | 0 | Probability of a highlight box behind the line |
+| `--text-effect-echo-prob F` | float | 0 | Probability of faint offset duplicate (echo/ghost) copies |
+| `--text-effect-glitch-prob F` | float | 0 | Probability of a small offset colour-split glitch look |
+| `--text-effect-glow-prob F` | float | 0 | Probability of a soft blurred glow halo behind the text |
+| `--text-effect-hollow-prob F` | float | 0 | Probability of outline-only glyphs with a background-colour interior |
+| `--text-effect-huge-prob F` | float | 0 | Probability of oversized text relative to the canvas |
+| `--text-effect-neon-prob F` | float | 0 | Probability of a bright neon-sign fill and glow |
+| `--text-effect-outline-prob F` | float | 0 | Probability of a solid fill with a contrasting stroke outline |
+| `--text-effect-pixel-prob F` | float | 0 | Probability of blocky/pixelated glyph edges |
+| `--text-effect-shadow-prob F` | float | 0 | Probability of an offset blurred drop shadow |
+| `--text-effect-tiny-prob F` | float | 0 | Probability of undersized text relative to the canvas |
+| `--text-effect-transparent-prob F` | float | 0 | Probability of a partially see-through fill |
+
+Text effects are mutually exclusive with each other (Canva-style effects panel:
+one effect at a time, first probability hit wins) but combine freely with the
+`--text-deco-*` decorations above.
 
 #### Variable line height
 
@@ -276,7 +292,8 @@ khocr-gen combine DATASET [DATASET ...] [OPTIONS]
 
 Each input dataset may have `train/` and/or `val/` subdirectories.
 Each split can be raw (`labels.txt` + `images/`) or LMDB (`lmdb/`).
-The merged output is always LMDB.
+The merged output is always LMDB. A merged `vocab.json`, covering every
+character across all merged splits, is written to the output directory too.
 
 ### Options
 
@@ -287,6 +304,8 @@ The merged output is always LMDB.
 | `--keep-raw` | flag | - | Keep raw images after LMDB packing |
 | `--jpeg-quality N` | int | 90 | JPEG quality |
 | `--map-size-gb N` | int | 256 | LMDB map size in GiB |
+| `--vocab FILE` | str | `OUTPUT/vocab.json` | Path to write merged vocab.json |
+| `--skip-vocab` | flag | - | Do not build a merged vocab.json |
 | `--verbose` | flag | - | Print merge and LMDB packing progress |
 
 ### Examples
