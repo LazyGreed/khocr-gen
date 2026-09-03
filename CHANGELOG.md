@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11] - 2026-09-03
+
+### Changed
+- `khocr-gen verify` now takes `--min` / `--max` (floats in `[0, 1]`, default `0.0`
+  and `1.0`) to set the fixed intensity used for each comparison column, instead of
+  the hard-coded endpoints. Each column applies exactly its intensity — never a
+  value sampled at random from the range — and the RNG is reseeded per image before
+  each method runs so pure-Python methods reproduce across runs (Rust-accelerated
+  methods keep their own thread RNG). Column labels now show the intensity value.
+- `configs/generate.yml` example config: trimmed the now-redundant "all optional"
+  header comments and retuned several sample values (`height` 64→48, `mixed-font-prob`
+  0.5→0.6, `max-line-height` 96→64, `min-font-scale` 0.4→0.65, `max-length` 120→25,
+  `rare-char-percentile` 5→20, every `text-effect-*-prob` 0.05→0.1). Documentation
+  defaults only — no code behavior change.
+
 ## [0.1.10] - 2026-08-13
 
 ### Added

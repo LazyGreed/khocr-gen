@@ -1,7 +1,13 @@
 """`khocr-gen verify` - visual verification of augmentation methods.
 
-Renders each augmentation method at MIN and MAX intensity on a clean canvas, producing side-by-side comparison images.
-Every augmentation is applied in isolation, no stacking or combining of effects.
+Renders each augmentation method at two fixed intensities on a clean canvas,
+producing side-by-side comparison images. The two intensities default to 0.0
+(MIN) and 1.0 (MAX) but are settable via ``--min`` / ``--max``; each column uses
+exactly that intensity rather than a value sampled at random from the range.
+The RNG is reseeded per image before each method runs so pure-Python methods
+reproduce exactly across runs (Rust-accelerated methods use their own thread RNG
+and still vary run to run). Every augmentation is applied in isolation, no
+stacking or combining of effects.
 """
 
 from __future__ import annotations
@@ -76,7 +82,12 @@ def _stack_images(images: list[np.ndarray], target_w: int) -> np.ndarray:
 
 
 def _make_comparison_grid(
-    low_grid: np.ndarray, high_grid: np.ndarray, method_name: str, image_width: int
+    low_grid: np.ndarray,
+    high_grid: np.ndarray,
+    method_name: str,
+    image_width: int,
+    min_intensity: float,
+    max_intensity: float,
 ) -> np.ndarray:
     """Stack low and high grids side by side with labels."""
     label_h = 28
@@ -89,8 +100,8 @@ def _make_comparison_grid(
         cv2.putText(banner, text, (6, 20), font, font_scale, (220, 220, 220), thickness)
         return np.vstack([banner, img])
 
-    low_labeled = _add_label(low_grid, f"{method_name}  [MIN]")
-    high_labeled = _add_label(high_grid, f"{method_name}  [MAX]")
+    low_labeled = _add_label(low_grid, f"{method_name}  [MIN {min_intensity:.2f}]")
+    high_labeled = _add_label(high_grid, f"{method_name}  [MAX {max_intensity:.2f}]")
 
     h_max = max(low_labeled.shape[0], high_labeled.shape[0])
 
@@ -111,6 +122,34 @@ def _make_comparison_grid(
 # ── Main verification logic ───────────────────────────────────────────────
 
 
+def _apply_at_intensity(
+    aug_fn: Any, method_name: str, clean_images: list[np.ndarray], intensity: float
+) -> list[np.ndarray]:
+    """Apply *aug_fn* at a fixed *intensity* to every clean image.
+
+    The Python RNG is reseeded deterministically per image so pure-Python methods
+    reproduce across runs (methods such as rotation draw their own randomness from
+    the fixed intensity's range).
+    """
+    results: list[np.ndarray] = []
+    for idx, img in enumerate(clean_images):
+        random.seed(42 + idx)
+        np.random.seed(42 + idx)
+        try:
+            if method_name in _RGB_PREFERRED_METHODS:
+                rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB) if img.ndim == 2 else img.copy()
+                result = aug_fn(rgb, intensity)
+                if result is not None and result.ndim == 3:
+                    result = cv2.cvtColor(result, cv2.COLOR_RGB2GRAY)
+            else:
+                result = aug_fn(img.copy(), intensity)
+            if result is not None:
+                results.append(result)
+        except Exception as exc:
+            _log.debug("aug %s @ %.3f failed: %s", method_name, intensity, exc)
+    return results
+
+
 def run(args: argparse.Namespace) -> int:
     """Entry point called by cli.py."""
     output_dir = Path(args.output_dir)
@@ -123,6 +162,11 @@ def run(args: argparse.Namespace) -> int:
     show: bool = args.show
     corpus_path: str | None = args.corpus
     repeats: int = max(1, args.repeats)
+
+    min_intensity = float(min(max(args.min_intensity, 0.0), 1.0))
+    max_intensity = float(min(max(args.max_intensity, 0.0), 1.0))
+    if max_intensity < min_intensity:
+        min_intensity, max_intensity = max_intensity, min_intensity
 
     # Build method list — all registered methods with min/max intensities
     all_methods: dict[str, Any] = dict(AUG_METHODS)
@@ -138,6 +182,7 @@ def run(args: argparse.Namespace) -> int:
     print(f"\nVerification samples : {count}")
     print(f"Fonts directory      : {fonts_dir}")
     print(f"Output directory     : {output_dir}")
+    print(f"Intensities          : MIN={min_intensity:.2f}  MAX={max_intensity:.2f}")
     print(f"Methods              : {', '.join(method_names)}")
     print()
 
@@ -173,40 +218,11 @@ def run(args: argparse.Namespace) -> int:
             print("    WARNING: no images rendered; skipping.")
             continue
 
-        # Apply MIN intensity
-        print("    Applying MIN intensity ...", end="", flush=True)
-        min_images: list[np.ndarray] = []
-        for img in clean_images:
-            try:
-                # For HSV and reverse methods, convert to RGB first
-                if method_name in _RGB_PREFERRED_METHODS:
-                    rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB) if img.ndim == 2 else img.copy()
-                    result = aug_fn(rgb, 0.0)
-                    if result is not None and result.ndim == 3:
-                        result = cv2.cvtColor(result, cv2.COLOR_RGB2GRAY)
-                else:
-                    result = aug_fn(img.copy(), 0.0)
-                if result is not None:
-                    min_images.append(result)
-            except Exception as exc:
-                _log.debug("MIN aug failed: %s", exc)
-
-        # Apply MAX intensity
-        print(" MAX intensity ...", end="", flush=True)
-        max_images: list[np.ndarray] = []
-        for img in clean_images:
-            try:
-                if method_name in _RGB_PREFERRED_METHODS:
-                    rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB) if img.ndim == 2 else img.copy()
-                    result = aug_fn(rgb, 1.0)
-                    if result is not None and result.ndim == 3:
-                        result = cv2.cvtColor(result, cv2.COLOR_RGB2GRAY)
-                else:
-                    result = aug_fn(img.copy(), 1.0)
-                if result is not None:
-                    max_images.append(result)
-            except Exception as exc:
-                _log.debug("MAX aug failed: %s", exc)
+        # Apply both intensities (each column uses exactly one fixed value)
+        print(f"    Applying MIN ({min_intensity:.2f}) ...", end="", flush=True)
+        min_images = _apply_at_intensity(aug_fn, method_name, clean_images, min_intensity)
+        print(f" MAX ({max_intensity:.2f}) ...", end="", flush=True)
+        max_images = _apply_at_intensity(aug_fn, method_name, clean_images, max_intensity)
         print(" done")
 
         if not min_images or not max_images:
@@ -221,7 +237,9 @@ def run(args: argparse.Namespace) -> int:
         low_grid = _stack_images(min_images, target_w)
         high_grid = _stack_images(max_images, target_w)
 
-        comparison = _make_comparison_grid(low_grid, high_grid, method_name, target_w)
+        comparison = _make_comparison_grid(
+            low_grid, high_grid, method_name, target_w, min_intensity, max_intensity
+        )
 
         out_path = output_dir / f"verify_{method_name}.png"
         ok = cv2.imwrite(str(out_path), cv2.cvtColor(comparison, cv2.COLOR_RGB2BGR))
@@ -269,6 +287,22 @@ def add_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--count", type=int, default=6, metavar="N", help="Number of sample texts per method"
+    )
+    parser.add_argument(
+        "--min",
+        dest="min_intensity",
+        type=float,
+        default=0.0,
+        metavar="F",
+        help="Fixed intensity in [0, 1] for the MIN column (default: 0.0)",
+    )
+    parser.add_argument(
+        "--max",
+        dest="max_intensity",
+        type=float,
+        default=1.0,
+        metavar="F",
+        help="Fixed intensity in [0, 1] for the MAX column (default: 1.0)",
     )
     parser.add_argument(
         "--repeats",

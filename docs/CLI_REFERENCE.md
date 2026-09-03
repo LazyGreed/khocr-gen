@@ -211,7 +211,10 @@ Each method has three flags: `--<name>-prob`, `--<name>-min`, `--<name>-max`.
 
 ## `khocr-gen verify`
 
-Render every augmentation method at min and max intensity on clean canvases.
+Render every augmentation method at two fixed intensities on clean canvases. The
+two intensities default to `0.0` and `1.0` and are settable via `--min` / `--max`;
+each column uses exactly that intensity rather than a value sampled at random from
+the range.
 
 ```bash
 khocr-gen verify [OPTIONS]
@@ -227,6 +230,8 @@ khocr-gen verify [OPTIONS]
 | `--height PX` | int | 48 | Image height in pixels |
 | `--width PX` | int | *auto* | Fixed image width; omit for variable width |
 | `--count N` | int | 6 | Number of sample texts per method |
+| `--min F` | float | 0.0 | Fixed intensity in `[0, 1]` for the MIN column |
+| `--max F` | float | 1.0 | Fixed intensity in `[0, 1]` for the MAX column |
 | `--repeats N` | int | 2 | Augmentation repeats per text, for variety |
 | `--method NAME [NAME ...]` | str | *all* | Restrict verification to specific method(s) |
 | `--show` | flag | - | Display each comparison interactively |
@@ -242,9 +247,12 @@ khocr-gen verify --fonts fonts/ --corpus corpus/corpus.txt --method blur rotatio
 
 # More samples per method, shown interactively
 khocr-gen verify --fonts fonts/ --count 10 --show
+
+# Compare two intensities from the middle of the range
+khocr-gen verify --fonts fonts/ --min 0.3 --max 0.6
 ```
 
-Output: one PNG per augmentation method, showing min intensity (left) vs max intensity (right) side-by-side on a clean canvas.
+Output: one PNG per augmentation method, showing the MIN intensity (left) vs the MAX intensity (right) side-by-side on a clean canvas. Each column applies exactly its intensity; the RNG is reseeded per image so pure-Python methods reproduce across runs (Rust-accelerated methods keep their own thread RNG and still vary).
 
 ---
 

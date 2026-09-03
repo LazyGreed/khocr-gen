@@ -65,7 +65,7 @@ _COMMAND_LOADERS: dict[str, Callable[[], CommandModule]] = {
 _LEAF_HELP: dict[str, str] = {
     "generate": "Generate synthetic training images from a text corpus",
     "combine": "Combine multiple generated datasets into one merged LMDB dataset",
-    "verify": "Visual verification of augmentation methods at MIN/MAX intensity",
+    "verify": "Visual verification of augmentation methods at fixed MIN/MAX intensity (settable via --min/--max)",
     "view": "Preview and extract images from an LMDB (.mdb) database",
 }
 

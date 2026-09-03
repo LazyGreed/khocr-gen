@@ -1,30 +1,30 @@
 # Rendering
-height: 64
+height: 48                            # only used when line-height-mode=fixed
 # width: null                         # omit for variable width
 color-mode: 3                         # 1 = grayscale, 3 = RGB
 fonts: fonts/
 font-mode: random
 copies: 1
-mixed-font-prob: 0.5
+mixed-font-prob: 0.6
 retry-limit: 10
 random-align-when-padded: false
 
-# Variable line height (all optional; default is fixed --height for every image)
+# Variable line height
 line-height-mode: bucketed            # fixed | variable | bucketed
 min-line-height: 32
-max-line-height: 96
+max-line-height: 64
 line-height-step: 16
 line-height-distribution: uniform     # uniform | triangular
 # default-line-height: 48             # triangular peak; defaults to range midpoint
 font-size-mode: proportional          # fixed | proportional
-min-font-scale: 0.4
+min-font-scale: 0.65
 max-font-scale: 0.9
 vertical-padding-mode: random         # fixed | random
 min-vertical-padding-ratio: 0.04
 max-vertical-padding-ratio: 0.18
 record-metadata: true                 # write metadata.jsonl per split
 
-# Text decoration (all optional; default 0 = disabled, each a probability in [0, 1])
+# Text decoration (0 = disabled, each a probability in [0, 1])
 text-deco-color-prob: 0.5             # random line color (RGB only; needs color-mode: 3)
 text-deco-underline-prob: 0.2         # underline the whole line
 text-deco-subscript-prob: 0.2         # lower 1-2 random ASCII chars
@@ -32,24 +32,24 @@ text-deco-superscript-prob: 0.2       # raise 1-2 random ASCII chars
 text-deco-italic-prob: 0.3            # italic via real italic/oblique variant font
 text-deco-bold-prob: 0.3              # bold via real bold variant font
 
-# Text effects (all optional)
-text-effect-huge-prob: 0.05           # oversized text relative to the canvas
-text-effect-tiny-prob: 0.05           # undersized text relative to the canvas
-text-effect-shadow-prob: 0.05         # offset blurred drop shadow
-text-effect-glow-prob: 0.05           # soft blurred glow halo
-text-effect-outline-prob: 0.05        # solid fill with a contrasting stroke
-text-effect-hollow-prob: 0.05         # outline-only glyphs, background-colour interior
-text-effect-echo-prob: 0.05           # faint offset duplicate (echo/ghost) copies
-text-effect-background-prob: 0.05     # highlight box behind the line
-text-effect-neon-prob: 0.05           # bright neon-sign fill and glow
-text-effect-glitch-prob: 0.05         # small offset colour-split glitch look
-text-effect-pixel-prob: 0.05          # blocky/pixelated glyph edges
-text-effect-transparent-prob: 0.05    # partially see-through fill
+# Text effects
+text-effect-huge-prob: 0.1            # oversized text relative to the canvas
+text-effect-tiny-prob: 0.1            # undersized text relative to the canvas
+text-effect-shadow-prob: 0.1          # offset blurred drop shadow
+text-effect-glow-prob: 0.1            # soft blurred glow halo
+text-effect-outline-prob: 0.1         # solid fill with a contrasting stroke
+text-effect-hollow-prob: 0.1          # outline-only glyphs, background-colour interior
+text-effect-echo-prob: 0.1            # faint offset duplicate (echo/ghost) copies
+text-effect-background-prob: 0.1      # highlight box behind the line
+text-effect-neon-prob: 0.1            # bright neon-sign fill and glow
+text-effect-glitch-prob: 0.1          # small offset colour-split glitch look
+text-effect-pixel-prob: 0.1           # blocky/pixelated glyph edges
+text-effect-transparent-prob: 0.1     # partially see-through fill
 
 # Corpus
 corpus: corpus/corpus.txt
 min-length: 1
-max-length: 120
+max-length: 25
 lines: 0                              # 0 = all
 #val-percent: 10.0
 #test-percent: 10.0                   # if only val-percent is set, test-percent is 0%
@@ -58,7 +58,7 @@ test-file: ""                         # separate test corpus; sole source of the
 seed: 42
 count-only: false                     # print filter stats + estimated image count, then exit
 oversample-rare-chars: true           # extra copies of training lines containing rare chars
-rare-char-percentile: 5.0             # least-frequent % of distinct chars considered rare
+rare-char-percentile: 20.0            # least-frequent % of distinct chars considered rare
 rare-char-multiplier: 3.0             # copy multiplier for lines containing a rare char
 # image-dir: ""                       # bypass text rendering; corpus must be labels.txt
 
@@ -90,7 +90,7 @@ dpi-mode: native
 bg-color-mode: random                 # default | paper_tones | colored | dark_mode | gradient | random
 
 # Text normalization
-norm_unicode_norm: ""                 # skipped by default; khmernormalizer normalizes internally
+norm_unicode_norm: ""
 norm_emoji_replacement: ""
 norm_url_replacement: ""
 norm_no_remove_zwsp: false
@@ -99,10 +99,8 @@ norm_no_uncurl_quotes: false
 norm_no_fix_line_breaks: false
 norm_passthrough: false
 
-# Augmentation methods
-# Each method: prob (0-1), min intensity (0-1), max intensity (0-1)
+# Augmentation methods: prob (0-1), min intensity (0-1), max intensity (0-1)
 # One augmentation applied per image (isolated, not stacked)
-
 sauvola-prob: 0.2
 sauvola-min: 0.1
 sauvola-max: 0.9
@@ -117,9 +115,9 @@ vertical-crop-max: 0.9
 
 blur-prob: 0.4
 blur-min: 0.1
-blur-max: 0.9
+blur-max: 0.5
 
-distortion-prob: 0.3
+distortion-prob: 0.0
 distortion-min: 0.1
 distortion-max: 0.9
 
@@ -131,9 +129,9 @@ jpeg-compression-prob: 0.4
 jpeg-compression-min: 0.1
 jpeg-compression-max: 0.9
 
-rotation-prob: 0.2                    # was 0.0 (disabled): rotation used to crop/discolor text near frame edges, now fixed
+rotation-prob: 0.2
 rotation-min: 0.1
-rotation-max: 0.9
+rotation-max: 0.2
 
 salt-pepper-prob: 0.15
 salt-pepper-min: 0.1
@@ -145,7 +143,7 @@ background-texture-max: 0.9
 
 lowdpi-prob: 0.3
 lowdpi-min: 0.1
-lowdpi-max: 0.9
+lowdpi-max: 0.5
 
 oversample-prob: 0.1
 oversample-min: 0.1
@@ -155,14 +153,14 @@ low-contrast-caption-prob: 0.2
 low-contrast-caption-min: 0.1
 low-contrast-caption-max: 0.9
 
-# Online augmentations (default disabled)
-perspective-prob: 0.3
+# Online augmentations
+perspective-prob: 0.0
 perspective-min: 0.1
 perspective-max: 0.9
 
-elastic-prob: 0.0
+elastic-prob: 0.2
 elastic-min: 0.1
-elastic-max: 0.9
+elastic-max: 0.1
 
 random-crop-prob: 0.0
 random-crop-min: 0.1
@@ -190,7 +188,7 @@ brightness-contrast-max: 0.9
 
 pixelation-prob: 0.3
 pixelation-min: 0.1
-pixelation-max: 0.9
+pixelation-max: 0.6
 
 gradient-illumination-prob: 0.4
 gradient-illumination-min: 0.1
@@ -198,8 +196,8 @@ gradient-illumination-max: 0.9
 
 morphological-prob: 0.3
 morphological-min: 0.1
-morphological-max: 0.9
+morphological-max: 0.4
 
 anisotropic-dilation-prob: 0.2
 anisotropic-dilation-min: 0.1
-anisotropic-dilation-max: 0.9
+anisotropic-dilation-max: 0.5
