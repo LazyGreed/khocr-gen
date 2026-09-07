@@ -252,8 +252,8 @@ class TestDistortion:
 
 
 class TestUnifiedRegistry:
-    def test_has_25_methods(self):
-        assert len(AUG_METHODS) == 25
+    def test_has_26_methods(self):
+        assert len(AUG_METHODS) == 26
 
     def test_expected_names(self):
         expected = {
@@ -269,6 +269,7 @@ class TestUnifiedRegistry:
             "background_texture",
             "lowdpi",
             "oversample",
+            "extreme_resize",
             "low_contrast_caption",
             "perspective",
             "elastic",
@@ -291,11 +292,17 @@ class TestUnifiedRegistry:
 
     def test_all_accept_image_and_intensity(self):
         img = _make_test_image()
+        # extreme_resize deliberately changes shape: its "intensity" is an
+        # absolute target height in pixels, not a [0, 1] fraction, and the
+        # resize back to line height happens in the rendering pipeline
+        # (ImageRenderer._apply_augmentation), not in the aug function itself.
+        shape_preserving = {name for name in AUG_METHODS if name != "extreme_resize"}
         for name, fn in AUG_METHODS.items():
             try:
                 result = fn(img.copy(), 0.5)
                 assert result is not None, f"{name} returned None"
-                assert result.shape == img.shape, f"{name} changed shape"
+                if name in shape_preserving:
+                    assert result.shape == img.shape, f"{name} changed shape"
             except Exception as e:
                 pytest.fail(f"{name} raised {e}")
 

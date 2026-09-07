@@ -624,6 +624,31 @@ def apply_oversample(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nda
     return cv2.filter2D(img, -1, kernel)
 
 
+# ── Extreme resize ──────────────────────────────────────────────────────────
+
+
+def apply_extreme_resize(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
+    """Simulate an extreme source resolution before normalisation.
+
+    Unlike other methods, *intensity* is not a [0, 1] fraction: it's an
+    absolute target height in pixels, sampled directly from the method's
+    configured (unbounded) min/max height range -- e.g. 8..1920. The clean
+    canvas is isotropically resized to that height (width scales with it),
+    simulating a very small source (later upscaled back to line height by
+    the pipeline, producing blockiness) or a very large one (softened by the
+    down/up interpolation). The pipeline's post-augmentation resize-to-target
+    step restores the final output size.
+    """
+    h, w = img.shape[:2]
+    if h <= 0:
+        return img
+    target_h = max(1, int(round(intensity)))
+    scale = target_h / h
+    target_w = max(1, int(round(w * scale)))
+    interp = cv2.INTER_AREA if target_h < h else cv2.INTER_LINEAR
+    return cv2.resize(img, (target_w, target_h), interpolation=interp)
+
+
 # ── Perspective warp (online) ─────────────────────────────────────────────────
 
 
@@ -862,7 +887,7 @@ _RGB_PREFERRED_METHODS: frozenset[str] = frozenset(
     }
 )
 
-# Unified registry: all 25 augmentation methods.
+# Unified registry: all 26 augmentation methods.
 AUG_METHODS: dict[str, Any] = {
     # Generator-side (scanner/camera degradation simulation)
     "sauvola": apply_sauvola,
@@ -877,6 +902,7 @@ AUG_METHODS: dict[str, Any] = {
     "background_texture": apply_background_texture,
     "lowdpi": apply_lowdpi,
     "oversample": apply_oversample,
+    "extreme_resize": apply_extreme_resize,
     "low_contrast_caption": apply_low_contrast_caption,
     # Training-time simulation
     "perspective": apply_perspective,

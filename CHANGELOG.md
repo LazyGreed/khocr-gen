@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2026-09-07
+
+### Added
+- `extreme_resize` augmentation method: isotropically resizes the clean canvas to a
+  sampled target height in pixels (width scales with it) before the pipeline resizes
+  it back to line height — simulating a tiny/pixelated source (small end of the
+  range, e.g. `8`) or a huge scan later shrunk down (large end, e.g. `1920`). Unlike
+  every other method, its `min`/`max` are absolute pixel heights rather than `[0, 1]`
+  fractions (`ExtremeResizeConfig`); wired through `--extreme-resize-prob/-min/-max`
+  (disabled by default, `prob: 0.0`) and `configs/generate.yml`. 26 methods in the
+  unified registry now.
+- `khocr-gen verify --method extreme_resize` support: since its min/max are pixel
+  heights, verify uses its own configured default range (8/1920) unless `--min`/
+  `--max` are passed explicitly (then taken as literal pixel heights, not clamped to
+  `[0, 1]`), and renormalizes its output back to line height before building the
+  comparison grid — mirroring what the real generation pipeline does — so the MAX
+  column shows the actual post-normalization artifact instead of a literal
+  1920px-tall image.
+
 ## [0.1.11] - 2026-09-03
 
 ### Changed

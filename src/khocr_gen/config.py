@@ -6,6 +6,9 @@ Each augmentation method has three tunable knobs exposed to CLI and config YAML:
 * `min` : minimum intensity level [0, 1] (normalised; mapped to physical units internally)
 * `max` : maximum intensity level [0, 1]
 
+One exception: `extreme_resize`'s `min`/`max` are absolute pixel heights
+(see `ExtremeResizeConfig`), not normalised [0, 1] values.
+
 The augmentation system is *isolated*:
 a single generated image receives exactly one augmentation method on a clean rendered canvas (no stacked effects).
 """
@@ -49,6 +52,28 @@ class AugMethodConfig:
     @property
     def enabled(self) -> bool:
         return self.prob > 0.0
+
+
+@dataclass
+class ExtremeResizeConfig(AugMethodConfig):
+    """Probability and height range for the `extreme_resize` augmentation.
+
+    Same `{prob, min, max}` shape as `AugMethodConfig`, but here `min`/`max`
+    are absolute target heights in *pixels* (not normalised to [0, 1]): the
+    augmentation isotropically resizes the clean canvas down to as small as
+    `min` or up to as large as `max` pixels tall before the pipeline resizes
+    it back to the output line height, simulating an extreme source
+    resolution (e.g. `min=8` for a tiny/pixelated source, `max=1920` for a
+    huge scan later shrunk down).
+    """
+
+    min: float = 8.0
+    max: float = 1920.0
+
+    def __post_init__(self) -> None:
+        self.prob = float(max(0.0, min(1.0, self.prob)))
+        self.min = float(max(1.0, self.min))
+        self.max = float(max(self.min, self.max))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -420,6 +445,11 @@ class GenerationConfig:
         default_factory=lambda: AugMethodConfig(prob=0.0, min=0.1, max=0.9)
     )
 
+    # Extreme source-resolution simulation (min/max are pixel heights, not [0, 1])
+    extreme_resize: AugMethodConfig = field(
+        default_factory=lambda: ExtremeResizeConfig(prob=0.0, min=8, max=1920)
+    )
+
     # Low-contrast small caption text
     low_contrast_caption: AugMethodConfig = field(
         default_factory=lambda: AugMethodConfig(prob=0.0, min=0.1, max=0.9)
@@ -582,6 +612,10 @@ class GenerationConfig:
         ("background_texture", "Background texture overlay"),
         ("lowdpi", "Low-DPI rendering simulation"),
         ("oversample", "Oversample rendering"),
+        (
+            "extreme_resize",
+            "Extreme source-resolution simulation (isotropic resize to a very small/large height)",
+        ),
         ("low_contrast_caption", "Low-contrast small caption text"),
         ("perspective", "Perspective warp"),
         ("elastic", "Elastic distortion"),
@@ -596,6 +630,12 @@ class GenerationConfig:
         ("morphological", "Morphological erode/dilate"),
         ("anisotropic_dilation", "Anisotropic dilation (dot-matrix spread)"),
     )
+
+    # Methods whose config class isn't the generic AugMethodConfig (e.g.
+    # extreme_resize's min/max are absolute pixel heights, not [0, 1]).
+    # from_args/from_dict must reconstruct via the right class, or the base
+    # class's __post_init__ clamps min/max back to [0, 1].
+    _AUG_METHOD_CLASSES: ClassVar[dict[str, type]] = {"extreme_resize": ExtremeResizeConfig}
 
     @staticmethod
     def add_args(parser: argparse.ArgumentParser) -> None:
@@ -1019,6 +1059,9 @@ class GenerationConfig:
             "One augmentation per image (isolated, not stacked).",
         )
         for attr_name, display_name in GenerationConfig._AUG_METHODS:
+            is_pixel_range = attr_name in GenerationConfig._AUG_METHOD_CLASSES
+            range_unit = "pixels" if is_pixel_range else "0-1"
+            range_metavar = "PX" if is_pixel_range else "F"
             g_aug.add_argument(
                 f"--{attr_name.replace('_', '-')}-prob",
                 type=float,
@@ -1030,15 +1073,15 @@ class GenerationConfig:
                 f"--{attr_name.replace('_', '-')}-min",
                 type=float,
                 default=None,
-                metavar="F",
-                help=f"Minimum intensity for {display_name} (0-1)",
+                metavar=range_metavar,
+                help=f"Minimum intensity for {display_name} ({range_unit})",
             )
             g_aug.add_argument(
                 f"--{attr_name.replace('_', '-')}-max",
                 type=float,
                 default=None,
-                metavar="F",
-                help=f"Maximum intensity for {display_name} (0-1)",
+                metavar=range_metavar,
+                help=f"Maximum intensity for {display_name} ({range_unit})",
             )
 
         # ── Normalizer ─────────────────────────────────────────────────────
@@ -1065,7 +1108,8 @@ class GenerationConfig:
             v_max = getattr(args, f"{attr_name}_max", None)
 
             default: AugMethodConfig = getattr(defaults, attr_name)
-            aug_kwargs[attr_name] = AugMethodConfig(
+            cfg_cls = cls._AUG_METHOD_CLASSES.get(attr_name, AugMethodConfig)
+            aug_kwargs[attr_name] = cfg_cls(
                 prob=float(prob) if prob is not None else default.prob,
                 min=float(v_min) if v_min is not None else default.min,
                 max=float(v_max) if v_max is not None else default.max,
@@ -1205,7 +1249,8 @@ class GenerationConfig:
 
         for key, value in d.items():
             if key in aug_method_names and isinstance(value, dict):
-                aug_kwargs[key] = AugMethodConfig(
+                cfg_cls = cls._AUG_METHOD_CLASSES.get(key, AugMethodConfig)
+                aug_kwargs[key] = cfg_cls(
                     prob=float(value.get("prob", 0.0)),
                     min=float(value.get("min", 0.0)),
                     max=float(value.get("max", 1.0)),

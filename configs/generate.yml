@@ -27,23 +27,23 @@ record-metadata: true                 # write metadata.jsonl per split
 # Text decoration (0 = disabled, each a probability in [0, 1])
 text-deco-color-prob: 0.5             # random line color (RGB only; needs color-mode: 3)
 text-deco-underline-prob: 0.2         # underline the whole line
-text-deco-subscript-prob: 0.2         # lower 1-2 random ASCII chars
-text-deco-superscript-prob: 0.2       # raise 1-2 random ASCII chars
+text-deco-subscript-prob: 0.0         # lower 1-2 random ASCII chars
+text-deco-superscript-prob: 0.0       # raise 1-2 random ASCII chars
 text-deco-italic-prob: 0.3            # italic via real italic/oblique variant font
-text-deco-bold-prob: 0.3              # bold via real bold variant font
+text-deco-bold-prob: 0.0              # bold via real bold variant font
 
 # Text effects
 text-effect-huge-prob: 0.1            # oversized text relative to the canvas
 text-effect-tiny-prob: 0.1            # undersized text relative to the canvas
 text-effect-shadow-prob: 0.1          # offset blurred drop shadow
-text-effect-glow-prob: 0.1            # soft blurred glow halo
+text-effect-glow-prob: 0.0            # soft blurred glow halo
 text-effect-outline-prob: 0.1         # solid fill with a contrasting stroke
 text-effect-hollow-prob: 0.1          # outline-only glyphs, background-colour interior
 text-effect-echo-prob: 0.1            # faint offset duplicate (echo/ghost) copies
 text-effect-background-prob: 0.1      # highlight box behind the line
-text-effect-neon-prob: 0.1            # bright neon-sign fill and glow
+text-effect-neon-prob: 0.0            # bright neon-sign fill and glow
 text-effect-glitch-prob: 0.1          # small offset colour-split glitch look
-text-effect-pixel-prob: 0.1           # blocky/pixelated glyph edges
+text-effect-pixel-prob: 0.0           # blocky/pixelated glyph edges
 text-effect-transparent-prob: 0.1     # partially see-through fill
 
 # Corpus
@@ -109,7 +109,7 @@ geo-warp-prob: 0.2
 geo-warp-min: 0.1
 geo-warp-max: 0.9
 
-vertical-crop-prob: 0.4
+vertical-crop-prob: 0.0
 vertical-crop-min: 0.1
 vertical-crop-max: 0.9
 
@@ -149,6 +149,12 @@ oversample-prob: 0.1
 oversample-min: 0.1
 oversample-max: 0.9
 
+# Extreme source-resolution simulation
+# min and max for height pixel size
+extreme-resize-prob: 0.4
+extreme-resize-min: 15
+extreme-resize-max: 500
+
 low-contrast-caption-prob: 0.2
 low-contrast-caption-min: 0.1
 low-contrast-caption-max: 0.9
@@ -166,7 +172,7 @@ random-crop-prob: 0.0
 random-crop-min: 0.1
 random-crop-max: 0.9
 
-online-blur-prob: 0.1
+online-blur-prob: 0.0
 online-blur-min: 0.1
 online-blur-max: 0.9
 

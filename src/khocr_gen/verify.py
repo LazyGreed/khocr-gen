@@ -8,6 +8,17 @@ The RNG is reseeded per image before each method runs so pure-Python methods
 reproduce exactly across runs (Rust-accelerated methods use their own thread RNG
 and still vary run to run). Every augmentation is applied in isolation, no
 stacking or combining of effects.
+
+Each individual `text_deco_*` (bold, italic, underline, color, subscript,
+superscript) and `text_effect_*` (background, echo, glitch, ...) probability
+is also verifiable the same way, one at a time: MIN/MAX pin just that one
+probability to the fixed intensity (all others at 0) and re-render, rather
+than applying an AUG_METHODS function to a clean canvas.
+
+`extreme_resize` is verified like any other AUG_METHODS entry, but its
+MIN/MAX columns are pixel heights (default 8/1920, its configured default
+range) rather than [0, 1] fractions -- pass ``--method extreme_resize --min
+16 --max 800`` to check a specific range.
 """
 
 from __future__ import annotations
@@ -21,7 +32,7 @@ import cv2
 import numpy as np
 
 from .augmentation import _RGB_PREFERRED_METHODS, AUG_METHODS
-from .config import GenerationConfig
+from .config import TEXT_EFFECT_NAMES, GenerationConfig, TextDecorationConfig, TextEffectConfig
 from .fonts import FontManager
 from .rendering import ImageRenderer
 
@@ -29,6 +40,29 @@ if TYPE_CHECKING:
     import argparse
 
 _log = logging.getLogger("khocr_gen.verify")
+
+# Rendering-time decorations/effects, not post-hoc augmentation functions --
+# each is verified by re-rendering with exactly one text_deco_*/text_effect_*
+# probability pinned to the fixed intensity (all others left at 0) instead of
+# calling an AUG_METHODS entry on a clean canvas.
+_TEXT_DECO_ATTRS: tuple[str, ...] = (
+    "bold",
+    "color",
+    "italic",
+    "subscript",
+    "superscript",
+    "underline",
+)
+_TEXT_PROB_METHODS: dict[str, tuple[str | None, str | None]] = {
+    f"text_deco_{attr}": (attr, None) for attr in _TEXT_DECO_ATTRS
+}
+_TEXT_PROB_METHODS.update({f"text_effect_{name}": (None, name) for name in TEXT_EFFECT_NAMES})
+
+# extreme_resize's min/max are absolute pixel heights, not [0, 1] fractions
+# (see ExtremeResizeConfig) -- verified with its own configured/CLI range
+# instead of the shared --min/--max intensity fractions used by every other
+# AUG_METHODS entry.
+_PIXEL_HEIGHT_METHODS: frozenset[str] = frozenset({"extreme_resize"})
 
 
 # ── Sample texts ──────────────────────────────────────────────────────────
@@ -150,6 +184,56 @@ def _apply_at_intensity(
     return results
 
 
+def _render_with_single_prob(
+    renderer: ImageRenderer,
+    cfg: GenerationConfig,
+    texts: list[str],
+    repeats: int,
+    prob: float,
+    *,
+    deco_attr: str | None,
+    effect_attr: str | None,
+) -> list[np.ndarray]:
+    """Render *texts* with exactly one text_deco/text_effect probability pinned
+    to *prob* (all its siblings left at 0), so each is verified in isolation.
+
+    Decorations/effects are sampled inside rendering rather than applied to a
+    clean canvas afterward, so this overrides ``cfg.text_deco``/``cfg.text_effect``
+    (restored afterward) instead of calling an aug function. ``color`` is a
+    no-op in grayscale mode (it only samples when ``color_mode == 3``), so the
+    renderer is switched to RGB for that one method.
+    """
+    original_deco, original_effect = cfg.text_deco, cfg.text_effect
+    original_color_mode, original_pil_mode = renderer.color_mode, renderer._pil_mode
+    cfg.text_deco = TextDecorationConfig(**({f"{deco_attr}_prob": prob} if deco_attr else {}))
+    cfg.text_effect = TextEffectConfig(**({f"{effect_attr}_prob": prob} if effect_attr else {}))
+    if deco_attr == "color":
+        renderer.color_mode = 3
+        renderer._pil_mode = "RGB"
+    results: list[np.ndarray] = []
+    try:
+        for i, text in enumerate(texts):
+            for _ in range(repeats):
+                random.seed(42 + i)
+                np.random.seed(42 + i)
+                try:
+                    img = renderer.render(text, augment=False)
+                    if img is not None:
+                        results.append(img)
+                except Exception as exc:
+                    _log.debug(
+                        "%s render failed for %r @ %.3f: %s",
+                        deco_attr or effect_attr,
+                        text,
+                        prob,
+                        exc,
+                    )
+    finally:
+        cfg.text_deco, cfg.text_effect = original_deco, original_effect
+        renderer.color_mode, renderer._pil_mode = original_color_mode, original_pil_mode
+    return results
+
+
 def run(args: argparse.Namespace) -> int:
     """Entry point called by cli.py."""
     output_dir = Path(args.output_dir)
@@ -163,16 +247,21 @@ def run(args: argparse.Namespace) -> int:
     corpus_path: str | None = args.corpus
     repeats: int = max(1, args.repeats)
 
-    min_intensity = float(min(max(args.min_intensity, 0.0), 1.0))
-    max_intensity = float(min(max(args.max_intensity, 0.0), 1.0))
+    raw_min = float(args.min_intensity)
+    raw_max = float(args.max_intensity)
+
+    min_intensity = float(min(max(raw_min, 0.0), 1.0))
+    max_intensity = float(min(max(raw_max, 0.0), 1.0))
     if max_intensity < min_intensity:
         min_intensity, max_intensity = max_intensity, min_intensity
 
-    # Build method list — all registered methods with min/max intensities
+    # Build method list — all registered methods with min/max intensities,
+    # plus each rendering-time text_deco/text_effect probability.
     all_methods: dict[str, Any] = dict(AUG_METHODS)
+    all_method_names = sorted({*all_methods, *_TEXT_PROB_METHODS})
 
     requested = set(args.method) if args.method else None
-    method_names = [name for name in all_methods if requested is None or name in requested]
+    method_names = [name for name in all_method_names if requested is None or name in requested]
 
     if not method_names:
         print(f"No matching augmentation methods for: {args.method}")
@@ -183,6 +272,8 @@ def run(args: argparse.Namespace) -> int:
     print(f"Fonts directory      : {fonts_dir}")
     print(f"Output directory     : {output_dir}")
     print(f"Intensities          : MIN={min_intensity:.2f}  MAX={max_intensity:.2f}")
+    if any(name in _PIXEL_HEIGHT_METHODS for name in method_names):
+        print("                        (extreme_resize uses pixel heights instead, see below)")
     print(f"Methods              : {', '.join(method_names)}")
     print()
 
@@ -198,36 +289,88 @@ def run(args: argparse.Namespace) -> int:
     saved: list[Path] = []
 
     for method_name in method_names:
-        aug_fn = all_methods[method_name]
         print(f"  ── {method_name} ──")
 
-        # Render clean base images (one per text, repeated for variety)
-        clean_images: list[np.ndarray] = []
-        for i, text in enumerate(texts):
-            for _ in range(repeats):
-                random.seed(42 + i)
-                np.random.seed(42 + i)
-                try:
-                    img = renderer.render(text, augment=False)
-                    if img is not None:
-                        clean_images.append(img)
-                except Exception as exc:
-                    _log.debug("Render failed for %r: %s", text, exc)
+        # extreme_resize's min/max are pixel heights, not [0, 1] fractions:
+        # use its own configured default range (8..1920) unless the user
+        # explicitly overrode --min/--max, in which case those are taken as
+        # literal pixel heights rather than clamped to [0, 1].
+        local_min, local_max = min_intensity, max_intensity
+        if method_name in _PIXEL_HEIGHT_METHODS:
+            default_min, default_max = cfg.extreme_resize.min, cfg.extreme_resize.max
+            local_min = raw_min if raw_min != 0.0 else default_min
+            local_max = raw_max if raw_max != 1.0 else default_max
+            if local_max < local_min:
+                local_min, local_max = local_max, local_min
 
-        if not clean_images:
-            print("    WARNING: no images rendered; skipping.")
-            continue
+        if method_name in _TEXT_PROB_METHODS:
+            # Rendering-time decoration/effect: re-render at each fixed
+            # intensity rather than applying a post-hoc augmentation function.
+            deco_attr, effect_attr = _TEXT_PROB_METHODS[method_name]
+            print(f"    Applying MIN ({local_min:.2f}) ...", end="", flush=True)
+            min_images = _render_with_single_prob(
+                renderer,
+                cfg,
+                texts,
+                repeats,
+                local_min,
+                deco_attr=deco_attr,
+                effect_attr=effect_attr,
+            )
+            print(f" MAX ({local_max:.2f}) ...", end="", flush=True)
+            max_images = _render_with_single_prob(
+                renderer,
+                cfg,
+                texts,
+                repeats,
+                local_max,
+                deco_attr=deco_attr,
+                effect_attr=effect_attr,
+            )
+            print(" done")
 
-        # Apply both intensities (each column uses exactly one fixed value)
-        print(f"    Applying MIN ({min_intensity:.2f}) ...", end="", flush=True)
-        min_images = _apply_at_intensity(aug_fn, method_name, clean_images, min_intensity)
-        print(f" MAX ({max_intensity:.2f}) ...", end="", flush=True)
-        max_images = _apply_at_intensity(aug_fn, method_name, clean_images, max_intensity)
-        print(" done")
+            if not min_images or not max_images:
+                print("    WARNING: no images rendered; skipping.")
+                continue
+        else:
+            aug_fn = all_methods[method_name]
 
-        if not min_images or not max_images:
-            print("    WARNING: failed to apply augmentation; skipping.")
-            continue
+            # Render clean base images (one per text, repeated for variety)
+            clean_images: list[np.ndarray] = []
+            for i, text in enumerate(texts):
+                for _ in range(repeats):
+                    random.seed(42 + i)
+                    np.random.seed(42 + i)
+                    try:
+                        img = renderer.render(text, augment=False)
+                        if img is not None:
+                            clean_images.append(img)
+                    except Exception as exc:
+                        _log.debug("Render failed for %r: %s", text, exc)
+
+            if not clean_images:
+                print("    WARNING: no images rendered; skipping.")
+                continue
+
+            # Apply both intensities (each column uses exactly one fixed value)
+            print(f"    Applying MIN ({local_min:.2f}) ...", end="", flush=True)
+            min_images = _apply_at_intensity(aug_fn, method_name, clean_images, local_min)
+            print(f" MAX ({local_max:.2f}) ...", end="", flush=True)
+            max_images = _apply_at_intensity(aug_fn, method_name, clean_images, local_max)
+            print(" done")
+
+            if not min_images or not max_images:
+                print("    WARNING: failed to apply augmentation; skipping.")
+                continue
+
+            if method_name in _PIXEL_HEIGHT_METHODS:
+                # The production pipeline always resizes an augmented image
+                # back to line height right after augmenting (see
+                # ImageRenderer._apply_augmentation); mirror that here so the
+                # MAX column shows the actual post-normalisation artifact
+                # instead of a literal 1920px-tall image.
+                min_images = [renderer._resize_to_target(img) for img in min_images]
+                max_images = [renderer._resize_to_target(img) for img in max_images]
 
         target_w = image_width or max(
             max(img.shape[1] for img in min_images),
@@ -238,7 +381,7 @@ def run(args: argparse.Namespace) -> int:
         high_grid = _stack_images(max_images, target_w)
 
         comparison = _make_comparison_grid(
-            low_grid, high_grid, method_name, target_w, min_intensity, max_intensity
+            low_grid, high_grid, method_name, target_w, local_min, local_max
         )
 
         out_path = output_dir / f"verify_{method_name}.png"
@@ -265,7 +408,7 @@ def run(args: argparse.Namespace) -> int:
 def add_args(parser: argparse.ArgumentParser) -> None:
     """Register all verify sub-command arguments onto *parser*."""
 
-    all_names = sorted(AUG_METHODS)
+    all_names = sorted({*AUG_METHODS, *_TEXT_PROB_METHODS})
 
     parser.add_argument("--fonts", default="fonts/", metavar="DIR", help="Root fonts directory")
     parser.add_argument(
@@ -294,7 +437,10 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         type=float,
         default=0.0,
         metavar="F",
-        help="Fixed intensity in [0, 1] for the MIN column (default: 0.0)",
+        help=(
+            "Fixed intensity in [0, 1] for the MIN column (default: 0.0). "
+            "For --method extreme_resize this is a pixel height instead (default: 8)."
+        ),
     )
     parser.add_argument(
         "--max",
@@ -302,7 +448,10 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         type=float,
         default=1.0,
         metavar="F",
-        help="Fixed intensity in [0, 1] for the MAX column (default: 1.0)",
+        help=(
+            "Fixed intensity in [0, 1] for the MAX column (default: 1.0). "
+            "For --method extreme_resize this is a pixel height instead (default: 1920)."
+        ),
     )
     parser.add_argument(
         "--repeats",

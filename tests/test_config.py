@@ -91,8 +91,8 @@ class TestGenerationConfigDefaults:
     def test_iter_aug_methods_count(self):
         cfg = GenerationConfig()
         methods = list(cfg.iter_aug_methods())
-        # 25 methods in unified registry
-        assert len(methods) == 25
+        # 26 methods in unified registry
+        assert len(methods) == 26
 
     def test_enabled_aug_methods_nonempty_by_default(self):
         cfg = GenerationConfig()
