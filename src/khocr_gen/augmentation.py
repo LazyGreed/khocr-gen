@@ -642,9 +642,9 @@ def apply_extreme_resize(img: np.ndarray, intensity: float, **kwargs: Any) -> np
     h, w = img.shape[:2]
     if h <= 0:
         return img
-    target_h = max(1, int(round(intensity)))
+    target_h = max(1, round(intensity))
     scale = target_h / h
-    target_w = max(1, int(round(w * scale)))
+    target_w = max(1, round(w * scale))
     interp = cv2.INTER_AREA if target_h < h else cv2.INTER_LINEAR
     return cv2.resize(img, (target_w, target_h), interpolation=interp)
 
