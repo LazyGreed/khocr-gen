@@ -1,11 +1,11 @@
 # Augmentation Reference
 
-`khocr-gen` provides 25 augmentation methods in a unified registry.
+`khocr-gen` provides 26 augmentation methods in a unified registry.
 Each generated image receives **exactly one** augmentation applied to a clean rendered canvas; effects are never stacked.
 
-21 of the 25 methods run through a native Rust extension when available (falling back to
-pure Python/OpenCV otherwise) — `distortion`, `albu_noise`, `gradient_illumination`, and
-`low_contrast_caption` are the exceptions. See [RUST_ACCELERATION.md](RUST_ACCELERATION.md) for details.
+21 of the 26 methods run through a native Rust extension when available (falling back to
+pure Python/OpenCV otherwise) — `distortion`, `albu_noise`, `gradient_illumination`,
+`extreme_resize`, and `low_contrast_caption` are the exceptions. See [RUST_ACCELERATION.md](RUST_ACCELERATION.md) for details.
 
 ## Architecture
 
@@ -23,7 +23,8 @@ P(method_i) = prob_i / Σ prob_j    (for all enabled methods j)
 
 ### Intensity
 
-Once a method is chosen, its intensity is sampled uniformly from its configured `[min, max]` range (both in [0, 1]).
+Once a method is chosen, its intensity is sampled uniformly from its configured `[min, max]` range (both in [0, 1]
+for every method except `extreme_resize`, whose `min`/`max` are absolute pixel heights — see below).
 The method maps this to physical units:
 
 | Method | intensity -> physical |
@@ -38,7 +39,7 @@ The method maps this to physical units:
 
 ---
 
-## Augmentation Methods (25 methods)
+## Augmentation Methods (26 methods)
 
 All methods are applied in isolation; one effect per image, chosen probabilistically from the unified registry.
 
@@ -139,6 +140,19 @@ the renderer, not here).
 
 - **Intensity -> sharpen strength** [1.0, 1.5]
 - Uses a 3×3 unsharp mask kernel
+
+### `extreme_resize`: Extreme Source-Resolution Simulation
+
+Isotropically resizes the clean canvas to a sampled target height in pixels
+(width scales with it) before the pipeline resizes it back to line height —
+simulating a tiny/pixelated source (small end of the range, e.g. `8`) or a
+huge scan later shrunk down (large end, e.g. `1920`).
+
+- **Intensity is an absolute pixel height, not a `[0, 1]` fraction** — the
+  only method where this is true. Default range `min=8`, `max=1920`
+  (`ExtremeResizeConfig`); disabled by default (`prob: 0.0`).
+- Downscale uses `INTER_AREA`, upscale uses `INTER_LINEAR`
+- CLI: `--extreme-resize-prob/-min/-max`
 
 ### `low_contrast_caption`: Low-Contrast Small Caption Text
 
