@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Tagged pushes now publish `khocr-gen` to PyPI automatically via a new GitHub Actions
+  workflow (`.github/workflows/publish.yml`); the publish step is skipped gracefully
+  when the `PYPI_TOKEN` secret isn't configured instead of failing the run.
+
 ## [0.1.12] - 2026-09-07
 
 ### Added
@@ -23,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comparison grid — mirroring what the real generation pipeline does — so the MAX
   column shows the actual post-normalization artifact instead of a literal
   1920px-tall image.
+- `khocr-gen verify --method <name>` now also accepts each individual `text_deco_*`
+  and `text_effect_*` probability name (e.g. `text_deco_bold`, `text_effect_glow`),
+  re-rendering with just that one probability pinned to the fixed intensity (all
+  others at 0) instead of applying a post-hoc augmentation function to a clean canvas.
 
 ## [0.1.11] - 2026-09-03
 

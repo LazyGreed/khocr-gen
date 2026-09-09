@@ -10,8 +10,8 @@ Synthetic OCR training data generator for mixed Khmer/English text.
 - **Variable line height:** sample per-image canvas height (fixed/variable/bucketed), with optional proportional font scaling and random padding, no glyph clipping
 - **Text decorations:** per-line color, underline, subscript/superscript, italic, and bold sampled at render time (can combine, isolated from augmentations)
 - **Text effects:** Canva-style per-line effects — huge/tiny sizing, transparency, drop shadow, glow, outline, hollow, echo, background highlight, neon, glitch, and pixel — mutually exclusive with each other, combinable with text decorations
-- **25 augmentation methods:** unified registry covering scanner/camera degradations and training-time transforms
-- **Rust acceleration:** 21/25 augmentation methods plus font glyph checking run through a native PyO3 extension, with automatic pure-Python fallback
+- **26 augmentation methods:** unified registry covering scanner/camera degradations and training-time transforms
+- **Rust acceleration:** 21/26 augmentation methods plus font glyph checking run through a native PyO3 extension, with automatic pure-Python fallback
 - **Isolated augmentation:** one effect per image, weighted by configurable probabilities
 - **Configurable intensity ranges:** per-method `[min, max]` with linear sampling
 - **Multiprocess generation:** parallel workers for throughput
@@ -174,7 +174,7 @@ hollow, echo, background, neon, glitch, pixel).
 
 ## Augmentation
 
-25 methods in a unified registry (21 of them Rust-accelerated).
+26 methods in a unified registry (21 of them Rust-accelerated).
 Each generated image receives exactly one augmentation, chosen probabilistically by weight.
 See [AUGMENTATION.md](docs/AUGMENTATION.md) for the full catalog and visual examples.
 

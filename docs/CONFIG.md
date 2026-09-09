@@ -107,6 +107,7 @@ norm_passthrough: false
 
 # Augmentation methods
 # Each method: prob (0-1), min intensity (0-1), max intensity (0-1)
+# Exception: extreme_resize's min/max are absolute pixel heights, not [0, 1]
 # One augmentation applied per image (isolated, not stacked)
 
 sauvola:
@@ -168,6 +169,12 @@ oversample:
   prob: 0.0
   min: 0.1
   max: 0.9
+
+# min/max are absolute pixel heights (not [0, 1]) -- see Augmentation Method Fields below
+extreme_resize:
+  prob: 0.0
+  min: 8
+  max: 1920
 
 low_contrast_caption:
   prob: 0.0
@@ -281,6 +288,10 @@ Each augmentation method is configured with three values:
 | `prob` | float | [0, 1] | Probability weight for selecting this method |
 | `min` | float | [0, 1] | Minimum intensity (normalized; clamped to ≥ 0) |
 | `max` | float | [0, 1] | Maximum intensity (clamped to ≤ 1; ≥ min) |
+
+**Exception:** `extreme_resize`'s `min`/`max` are absolute target heights in *pixels*
+(default `8`/`1920`, clamped to `min ≥ 1` and `max ≥ min`), not normalized `[0, 1]`
+values — see [AUGMENTATION.md](AUGMENTATION.md#extreme_resize-extreme-source-resolution-simulation).
 
 **How intensities work:** The actual intensity for a given image is sampled uniformly from `[min, max]`.
 The method maps this normalized value to physical units (pixel displacements, kernel sizes, noise sigmas, etc.).

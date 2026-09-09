@@ -194,6 +194,8 @@ Each method has three flags: `--<name>-prob`, `--<name>-min`, `--<name>-max`.
 | `background-texture` | 0.35 | 0.1 | 0.9 | Procedural paper texture |
 | `lowdpi` | 0.0 | 0.1 | 0.9 | Low-DPI rendering simulation |
 | `oversample` | 0.0 | 0.1 | 0.9 | Oversample rendering |
+| `extreme-resize` | 0.0 | 8 | 1920 | Extreme source-resolution simulation (`min`/`max` are pixel heights, not `[0, 1]`) |
+| `low-contrast-caption` | 0.0 | 0.1 | 0.9 | Low-contrast small caption text |
 | `perspective` | 0.0 | 0.1 | 0.9 | Perspective warp |
 | `elastic` | 0.0 | 0.1 | 0.9 | Elastic distortion |
 | `random-crop` | 0.0 | 0.1 | 0.9 | Random height crop |
@@ -216,6 +218,14 @@ two intensities default to `0.0` and `1.0` and are settable via `--min` / `--max
 each column uses exactly that intensity rather than a value sampled at random from
 the range.
 
+Each individual `text_deco_*` (bold, italic, underline, color, subscript,
+superscript) and `text_effect_*` (background, echo, glitch, glow, hollow, huge,
+neon, outline, pixel, shadow, tiny, transparent) probability is also verifiable
+the same way, one at a time — pass e.g. `--method text_deco_bold` or `--method
+text_effect_glow` — pinning just that probability to the fixed intensity (all
+others at 0) and re-rendering, rather than applying an augmentation function to
+a clean canvas.
+
 ```bash
 khocr-gen verify [OPTIONS]
 ```
@@ -230,10 +240,10 @@ khocr-gen verify [OPTIONS]
 | `--height PX` | int | 48 | Image height in pixels |
 | `--width PX` | int | *auto* | Fixed image width; omit for variable width |
 | `--count N` | int | 6 | Number of sample texts per method |
-| `--min F` | float | 0.0 | Fixed intensity in `[0, 1]` for the MIN column |
-| `--max F` | float | 1.0 | Fixed intensity in `[0, 1]` for the MAX column |
+| `--min F` | float | 0.0 | Fixed intensity in `[0, 1]` for the MIN column. For `--method extreme_resize` this is a pixel height instead (default: 8) |
+| `--max F` | float | 1.0 | Fixed intensity in `[0, 1]` for the MAX column. For `--method extreme_resize` this is a pixel height instead (default: 1920) |
 | `--repeats N` | int | 2 | Augmentation repeats per text, for variety |
-| `--method NAME [NAME ...]` | str | *all* | Restrict verification to specific method(s) |
+| `--method NAME [NAME ...]` | str | *all* | Restrict verification to specific method(s), including `text_deco_*`/`text_effect_*` names |
 | `--show` | flag | - | Display each comparison interactively |
 
 ### Examples
@@ -250,6 +260,9 @@ khocr-gen verify --fonts fonts/ --count 10 --show
 
 # Compare two intensities from the middle of the range
 khocr-gen verify --fonts fonts/ --min 0.3 --max 0.6
+
+# extreme_resize: --min/--max are pixel heights here, not [0, 1] fractions
+khocr-gen verify --fonts fonts/ --method extreme_resize --min 16 --max 800
 ```
 
 Output: one PNG per augmentation method, showing the MIN intensity (left) vs the MAX intensity (right) side-by-side on a clean canvas. Each column applies exactly its intensity; the RNG is reseeded per image so pure-Python methods reproduce across runs (Rust-accelerated methods keep their own thread RNG and still vary).
