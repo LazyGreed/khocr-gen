@@ -14,9 +14,9 @@ from __future__ import annotations
 import statistics
 import time
 
+import _rust_accel as native
 import numpy as np
 
-import _rust_accel as native
 from khocr_gen.augmentation import AUG_METHODS
 
 N_RUNS = 50
@@ -54,7 +54,7 @@ def _time_fn(fn, img: np.ndarray, n: int) -> float:
     # one untimed warmup call
     try:
         fn(img.copy(), INTENSITY)
-    except Exception as e:
+    except Exception:
         return float("nan")
     times = []
     for _ in range(n):
