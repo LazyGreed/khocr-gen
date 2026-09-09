@@ -11,9 +11,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Only publish when a PyPI token is configured; skip otherwise so the
-    # workflow never hard-fails on repos without publish access.
-    if: github.event_name == 'workflow_dispatch' || secrets.PYPI_TOKEN != ''
     steps:
       - uses: actions/checkout@v4
 
@@ -24,4 +21,5 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
+        if: secrets.PYPI_TOKEN != '' && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/'))
         run: uv publish --token ${{ secrets.PYPI_TOKEN }}
