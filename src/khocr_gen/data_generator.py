@@ -11,7 +11,6 @@ import logging
 import os
 import random
 import shutil
-import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -510,6 +509,11 @@ class DatasetGenerator:
                 for _ in range(n):
                     samples.append((line, None))
 
+        # samples now holds every (text, font_ref) entry to render; the raw
+        # line list isn't needed anymore and would otherwise stay resident
+        # alongside samples for the rest of the split.
+        del lines
+
         if not samples:
             print("  Generating 0 images...")
             return 0
@@ -700,122 +704,117 @@ class DatasetGenerator:
                 f"test={test_ratio * 100:.1f}%, seed={split_seed}"
             )
 
-            # Stream corpus through filters into a temp file
-            tmp_corpus = tempfile.NamedTemporaryFile(  # noqa: SIM115
-                mode="w", suffix=".txt", encoding="utf-8", delete=False
+            # Filter the corpus straight into a single in-memory list (one
+            # materialization) instead of round-tripping through a temp file
+            # and re-reading it back into a second list.
+            filtered_lines = load_corpus(
+                corpus_path,
+                min_length=min_length,
+                max_length=max_length,
+                max_lines=max_lines,
+                normalizer=self._cfg.normalizer,
             )
+            all_lines = list(tqdm(filtered_lines, desc="  Filtering corpus", unit="line"))
+            train_lines, val_lines, test_lines = self._split_lines_without_text_overlap(
+                all_lines, val_ratio=val_ratio, test_ratio=test_ratio, seed=split_seed
+            )
+            # all_lines is now fully partitioned across train/val/test; drop the
+            # reference so it doesn't sit in memory alongside the per-split
+            # re-read that generate_split performs below.
+            del all_lines
+
+            train_unique = len({(t[1] if isinstance(t, tuple) else t) for t in train_lines})
+            val_unique = len({(t[1] if isinstance(t, tuple) else t) for t in val_lines})
+            test_unique = len({(t[1] if isinstance(t, tuple) else t) for t in test_lines})
+
+            def _text_of(item):
+                return item[1] if isinstance(item, tuple) else item
+
+            overlap_tv = len({_text_of(x) for x in train_lines} & {_text_of(x) for x in val_lines})
+            overlap_tt = len({_text_of(x) for x in train_lines} & {_text_of(x) for x in test_lines})
+            overlap_vt = len({_text_of(x) for x in val_lines} & {_text_of(x) for x in test_lines})
+            print(
+                f"  Split summary: train={len(train_lines)} lines ({train_unique} unique), "
+                f"val={len(val_lines)} lines ({val_unique} unique), "
+                f"test={len(test_lines)} lines ({test_unique} unique), "
+                f"overlaps: train∩val={overlap_tv} train∩test={overlap_tt} val∩test={overlap_vt}"
+            )
+
+            temp_train = output_dir / "temp_train.txt"
+            temp_val = output_dir / "temp_val.txt"
+            temp_test = output_dir / "temp_test.txt"
+            self._write_lines(temp_train, train_lines)
+            self._write_lines(temp_val, val_lines)
+            self._write_lines(temp_test, test_lines)
+            # The split lists are now on disk for generate_split to stream back
+            # in per-split. Drop them so the full corpus isn't held twice while
+            # rendering runs.
+            val_lines_present = bool(val_lines)
+            test_lines_present = bool(test_lines)
+            del train_lines, val_lines, test_lines
+
             try:
-                filtered_lines = load_corpus(
-                    corpus_path,
-                    min_length=min_length,
-                    max_length=max_length,
-                    max_lines=max_lines,
-                    normalizer=self._cfg.normalizer,
-                )
-                for line in tqdm(filtered_lines, desc="  Filtering corpus", unit="line"):
-                    tmp_corpus.write(line + "\n")
-                tmp_corpus.close()
-
-                all_lines = self._read_non_empty_lines(tmp_corpus.name)
-                train_lines, val_lines, test_lines = self._split_lines_without_text_overlap(
-                    all_lines, val_ratio=val_ratio, test_ratio=test_ratio, seed=split_seed
-                )
-
-                train_unique = len({(t[1] if isinstance(t, tuple) else t) for t in train_lines})
-                val_unique = len({(t[1] if isinstance(t, tuple) else t) for t in val_lines})
-                test_unique = len({(t[1] if isinstance(t, tuple) else t) for t in test_lines})
-
-                def _text_of(item):
-                    return item[1] if isinstance(item, tuple) else item
-
-                overlap_tv = len(
-                    {_text_of(x) for x in train_lines} & {_text_of(x) for x in val_lines}
-                )
-                overlap_tt = len(
-                    {_text_of(x) for x in train_lines} & {_text_of(x) for x in test_lines}
-                )
-                overlap_vt = len(
-                    {_text_of(x) for x in val_lines} & {_text_of(x) for x in test_lines}
-                )
-                print(
-                    f"  Split summary: train={len(train_lines)} lines ({train_unique} unique), "
-                    f"val={len(val_lines)} lines ({val_unique} unique), "
-                    f"test={len(test_lines)} lines ({test_unique} unique), "
-                    f"overlaps: train∩val={overlap_tv} train∩test={overlap_tt} val∩test={overlap_vt}"
+                print("\nGenerating TRAINING set...")
+                counts["train"] = self.generate_split(
+                    text_file=temp_train,
+                    output_dir=output_dir / "train",
+                    split_name="train",
+                    font_mode=font_mode,
+                    retry_limit=retry_limit,
+                    append=append_mode,
+                    workers=workers,
+                    image_dir=image_dir,
+                    copies=copies,
+                    rare_chars=rare_chars,
+                    rare_char_multiplier=rare_char_multiplier,
                 )
 
-                temp_train = output_dir / "temp_train.txt"
-                temp_val = output_dir / "temp_val.txt"
-                temp_test = output_dir / "temp_test.txt"
-                self._write_lines(temp_train, train_lines)
-                self._write_lines(temp_val, val_lines)
-                self._write_lines(temp_test, test_lines)
-
-                try:
-                    print("\nGenerating TRAINING set...")
-                    counts["train"] = self.generate_split(
-                        text_file=temp_train,
-                        output_dir=output_dir / "train",
-                        split_name="train",
+                if val_lines_present:
+                    print("\nGenerating VALIDATION set (disjoint text split)...")
+                    counts["val"] = self.generate_split(
+                        text_file=temp_val,
+                        output_dir=output_dir / "val",
+                        split_name="val",
                         font_mode=font_mode,
                         retry_limit=retry_limit,
                         append=append_mode,
                         workers=workers,
                         image_dir=image_dir,
-                        copies=copies,
-                        rare_chars=rare_chars,
-                        rare_char_multiplier=rare_char_multiplier,
+                        copies=1,
                     )
 
-                    if val_lines:
-                        print("\nGenerating VALIDATION set (disjoint text split)...")
-                        counts["val"] = self.generate_split(
-                            text_file=temp_val,
-                            output_dir=output_dir / "val",
-                            split_name="val",
-                            font_mode=font_mode,
-                            retry_limit=retry_limit,
-                            append=append_mode,
-                            workers=workers,
-                            image_dir=image_dir,
-                            copies=1,
-                        )
+                if test_lines_present:
+                    print("\nGenerating TEST set (disjoint text split)...")
+                    counts["test"] = self.generate_split(
+                        text_file=temp_test,
+                        output_dir=output_dir / "test",
+                        split_name="test",
+                        font_mode=font_mode,
+                        retry_limit=retry_limit,
+                        append=append_mode,
+                        workers=workers,
+                        image_dir=image_dir,
+                        copies=1,
+                    )
 
-                    if test_lines:
-                        print("\nGenerating TEST set (disjoint text split)...")
-                        counts["test"] = self.generate_split(
-                            text_file=temp_test,
-                            output_dir=output_dir / "test",
-                            split_name="test",
-                            font_mode=font_mode,
-                            retry_limit=retry_limit,
-                            append=append_mode,
-                            workers=workers,
-                            image_dir=image_dir,
-                            copies=1,
-                        )
-
-                    # Handle separate test_file when val_file path was NOT the primary path
-                    if test_file and Path(test_file).exists():
-                        print("\nGenerating TEST set (from separate file)...")
-                        counts["test"] = self.generate_split(
-                            text_file=test_file,
-                            output_dir=output_dir / "test",
-                            split_name="test",
-                            font_mode=font_mode,
-                            retry_limit=retry_limit,
-                            append=append_mode,
-                            workers=workers,
-                            image_dir=image_dir,
-                            copies=1,
-                        )
-                finally:
-                    for tmp_path in (temp_train, temp_val, temp_test):
-                        with contextlib.suppress(FileNotFoundError):
-                            tmp_path.unlink()
+                # Handle separate test_file when val_file path was NOT the primary path
+                if test_file and Path(test_file).exists():
+                    print("\nGenerating TEST set (from separate file)...")
+                    counts["test"] = self.generate_split(
+                        text_file=test_file,
+                        output_dir=output_dir / "test",
+                        split_name="test",
+                        font_mode=font_mode,
+                        retry_limit=retry_limit,
+                        append=append_mode,
+                        workers=workers,
+                        image_dir=image_dir,
+                        copies=1,
+                    )
             finally:
-                with contextlib.suppress(OSError):
-                    os.unlink(tmp_corpus.name)
+                for tmp_path in (temp_train, temp_val, temp_test):
+                    with contextlib.suppress(FileNotFoundError):
+                        tmp_path.unlink()
 
         print("\n" + "=" * 70)
         print("  Dataset Generation Complete!")
