@@ -1168,8 +1168,12 @@ class ImageRenderer:
                 if result is not None and result.ndim == 3:
                     result = cv2.cvtColor(result, cv2.COLOR_RGB2GRAY)
             else:
-                # RGB image or method works on any channel count
-                result = aug_fn(img.copy(), intensity)
+                # RGB image or method works on any channel count. AUG_METHODS
+                # entries never mutate their input in place -- native Rust
+                # bindings take it as an immutable slice, and the pure-Python
+                # fallbacks that need scratch space copy internally (e.g.
+                # apply_salt_pepper) -- so no defensive copy is needed here.
+                result = aug_fn(img, intensity)
 
             return self._resize_to_target(result, target_height)
         except Exception as exc:

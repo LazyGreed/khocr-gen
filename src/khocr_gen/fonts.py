@@ -28,11 +28,17 @@ class FontManager:
 
     _FONT_EXTENSIONS: ClassVar[set[str]] = {".ttf", ".otf", ".ttc", ".woff", ".woff2"}
 
-    # Bound on the dynamically-sized font cache (see `get_font_by_path_and_size`).
-    # Proportional font sizing samples a continuous scale, so almost every
-    # (font_path, size) pair is a cache miss; without a cap each miss permanently
-    # pins a freshly loaded FreeType face (roughly the font file's size) in
-    # memory, which grows unbounded over a long generation run.
+    # Sizes each font file is made available at (see `_load_fonts_from`).
+    # Registration is metadata-only (path + size, no FreeType face); actual
+    # faces are loaded lazily by `get_font_by_path_and_size`.
+    _STANDARD_SIZES: ClassVar[list[int]] = [28, 32, 36, 40, 44, 48]
+
+    # Bound on the font-face cache (see `get_font_by_path_and_size`).
+    # Every (font_path, size) pair -- proportional sizing's near-continuous
+    # scale as well as the standard sizes above -- is loaded lazily on first
+    # use; without a cap, a long run (or `font_mode=all`, which touches every
+    # font at every standard size) would pin every FreeType face it has ever
+    # seen in memory at once, in every process.
     _DYNAMIC_FONT_CACHE_SIZE: ClassVar[int] = 1024
 
     def __init__(
@@ -51,7 +57,6 @@ class FontManager:
         self.khmer_fonts: list[tuple[str, int, Any]] = []
         self.english_fonts: list[tuple[str, int, Any]] = []
         self.all_fonts: list[tuple[str, int, Any]] = []
-        self._font_lookup: dict[tuple[str, int], Any] = {}
         self._dynamic_font_cache_size = max(0, dynamic_font_cache_size)
         self._dynamic_font_cache: OrderedDict[tuple[str, int], Any] = OrderedDict()
         self._font_styles: dict[str, set[str]] = {}
@@ -70,20 +75,19 @@ class FontManager:
         return files
 
     def _load_fonts_from(self, directory: Path, target_list: list) -> int:
-        """Load every font file under *directory* into *target_list*."""
+        """Register every font file under *directory* into *target_list*.
+
+        Registration only records `(path, size, None)` entries; the actual
+        FreeType face is loaded on first use (see `get_font_by_path_and_size`).
+        """
         font_paths = self._collect_font_files(directory)
         added = 0
         for font_path in font_paths:
-            for size in [28, 32, 36, 40, 44, 48]:
-                try:
-                    font = ImageFont.truetype(str(font_path), size)
-                    entry = (str(font_path), size, font)
-                    target_list.append(entry)
-                    self.all_fonts.append(entry)
-                    self._font_lookup[(str(font_path), size)] = font
-                    added += 1
-                except Exception:
-                    pass
+            for size in self._STANDARD_SIZES:
+                entry = (str(font_path), size, None)
+                target_list.append(entry)
+                self.all_fonts.append(entry)
+                added += 1
         return added
 
     def _load_fonts(self) -> None:
@@ -114,17 +118,12 @@ class FontManager:
         n_root = 0
         if root_font_paths:
             for font_path in root_font_paths:
-                for size in [28, 32, 36, 40, 44, 48]:
-                    try:
-                        font = ImageFont.truetype(str(font_path), size)
-                        entry = (str(font_path), size, font)
-                        self.khmer_fonts.append(entry)
-                        self.english_fonts.append(entry)
-                        self.all_fonts.append(entry)
-                        self._font_lookup[(str(font_path), size)] = font
-                        n_root += 1
-                    except Exception:
-                        pass
+                for size in self._STANDARD_SIZES:
+                    entry = (str(font_path), size, None)
+                    self.khmer_fonts.append(entry)
+                    self.english_fonts.append(entry)
+                    self.all_fonts.append(entry)
+                    n_root += 1
 
         if not self.all_fonts:
             print("\n  No font files found.")
@@ -219,45 +218,42 @@ class FontManager:
         pool = self._pool_for(text)
         if not pool:
             return None
-        _, _, font = random.choice(pool)
-        return font
+        path, size, _ = random.choice(pool)
+        return self.get_font_by_path_and_size(path, size)
 
     def get_random_font_for_script(self, script: str) -> tuple[Any, int] | tuple[None, None]:
         """Get a random font for a specific script ('khmer' or 'english')."""
         if script == "khmer" and self.khmer_fonts:
-            _, size, font = random.choice(self.khmer_fonts)
-            return font, size
+            path, size, _ = random.choice(self.khmer_fonts)
         elif script == "english" and self.english_fonts:
-            _, size, font = random.choice(self.english_fonts)
-            return font, size
+            path, size, _ = random.choice(self.english_fonts)
         elif self.all_fonts:
-            _, size, font = random.choice(self.all_fonts)
-            return font, size
-        return None, None
+            path, size, _ = random.choice(self.all_fonts)
+        else:
+            return None, None
+        return self.get_font_by_path_and_size(path, size), size
 
     def get_font_by_ref(self, font_ref: Any) -> Any:
-        """Resolve a `(path, size)` reference back to a loaded font."""
+        """Resolve a `(path, size)` reference back to a font, loading lazily."""
         if (
             isinstance(font_ref, tuple)
             and len(font_ref) >= 2
             and font_ref[0] is not None
             and font_ref[1] is not None
         ):
-            return self._font_lookup.get((str(font_ref[0]), int(font_ref[1])))
+            return self.get_font_by_path_and_size(str(font_ref[0]), int(font_ref[1]))
         return font_ref
 
     def get_font_by_path_and_size(self, font_path: str, size: int) -> Any:
-        """Get font by path and size, loading and caching dynamically.
+        """Get font by path and size, loading and caching lazily.
 
-        Sizes that match one of the fonts loaded at startup (see `_load_fonts`)
-        are served from the permanent `_font_lookup` cache. Any other size is
-        served from a bounded LRU cache so that proportional font-size mode
-        (which samples a near-continuous range of sizes) can't grow memory
-        without bound over a long run.
+        Every (font_path, size) pair -- including the standard sizes each
+        font is registered at by `_load_fonts` -- is loaded on first use and
+        served from a bounded LRU cache, so neither a long run nor
+        `font_mode=all` (which touches every font at every standard size)
+        can pin every FreeType face in memory at once.
         """
         key = (str(font_path), int(size))
-        if key in self._font_lookup:
-            return self._font_lookup[key]
         if key in self._dynamic_font_cache:
             self._dynamic_font_cache.move_to_end(key)
             return self._dynamic_font_cache[key]
