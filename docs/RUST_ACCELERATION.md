@@ -63,7 +63,7 @@ Accelerated: `sauvola`, `geo_warp`, `vertical_crop`, `blur`, `jpeg_compression`,
 `brightness_contrast`, `pixelation`, `morphological`, `anisotropic_dilation`.
 
 Not accelerated (pure Python/Albumentations only): `distortion`, `albu_noise` (thin
-wrappers around Albumentations' own compiled pipeline — no native win to be had),
+wrappers around Albumentations' own compiled pipeline, no native win to be had),
 `gradient_illumination` (the Rust implementation is grayscale-only, but the renderer may
 pass RGB arrays through `_RGB_PREFERRED_METHODS`, so it's excluded until an RGB path is
 added), `extreme_resize`, and `low_contrast_caption` (no native implementation yet).
@@ -96,13 +96,13 @@ into `augmentation.py`'s helper calls.
   (font loading, glyph/text support checks, Khmer detection). It's built and exported
   from `_rust_accel.py`, but the actual generation pipeline still uses the pure-Python
   `FontManager`, since it needs to hand back real `PIL.ImageFont` objects for
-  `ImageDraw.text()` — `RustFontManager` doesn't produce those. It's available for
+  `ImageDraw.text()`, which `RustFontManager` doesn't produce. It's available for
   anyone who wants fast font metadata/coverage queries independent of rendering.
 - **`rendering.rs`** — a from-scratch Rust reimplementation of canvas rendering
   (clean-canvas draw, resize/pad, mixed-font compositing) exists in `rust/src/rendering.rs`
   but has no `#[pyclass]`/`#[pyfunction]` bindings and is not registered in the
   `_rust_accel` `#[pymodule]` in `lib.rs`. It compiles (with "never used" warnings) but
-  is dead code from Python's perspective — a starting point for a future full-pipeline
+  is dead code from Python's perspective: a starting point for a future full-pipeline
   rendering port, not something currently exercised.
 
 ## Module layout

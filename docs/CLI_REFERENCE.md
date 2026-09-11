@@ -91,7 +91,7 @@ one effect at a time, first probability hit wins) but combine freely with the
 
 Every generated image is produced by rendering onto a clean canvas at its
 natural size and then uniformly *resizing* (never cropping) to the sampled
-target height, so glyphs — including Khmer diacritics — are never clipped
+target height, so glyphs (including Khmer diacritics) are never clipped
 regardless of which height gets sampled. `labels.txt` is unaffected: variable
 height is encoded entirely in the image dimensions.
 
@@ -265,7 +265,7 @@ khocr-gen verify --fonts fonts/ --min 0.3 --max 0.6
 khocr-gen verify --fonts fonts/ --method extreme_resize --min 16 --max 800
 ```
 
-Output: one PNG per augmentation method, showing the MIN intensity (left) vs the MAX intensity (right) side-by-side on a clean canvas. Each column applies exactly its intensity; the RNG is reseeded per image so pure-Python methods reproduce across runs (Rust-accelerated methods keep their own thread RNG and still vary).
+Output: one PNG per augmentation method, showing the MIN intensity (left) vs the MAX intensity (right) side-by-side on a clean canvas. The RNG is reseeded per image so pure-Python methods reproduce across runs (Rust-accelerated methods keep their own thread RNG and still vary).
 
 ---
 

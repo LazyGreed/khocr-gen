@@ -72,8 +72,6 @@ The generator should distinguish between:
 - rendered text height / font size: how large the glyphs are inside the canvas
 - vertical padding: empty space above/below text
 
-This matters because these are not equivalent.
-
 Good variable height generation should support both:
 
 ```yaml
@@ -96,8 +94,6 @@ Practical interpretation:
 - Pick a font size that fits into roughly 65–90% of that height.
 - Add random top/bottom padding.
 - Render the text without clipping Khmer diacritics.
-
-This is better than simply resizing a fixed height render up and down.
 
 4. **Preserve Existing Label Format**
 

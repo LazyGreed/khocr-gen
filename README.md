@@ -217,7 +217,7 @@ separate job that builds the `rust/` crate (`cargo build --release`). See
 
 ## Acknowledgments
 
-khocr-gen builds on excellent open-source libraries:
+khocr-gen builds on these open-source libraries:
 
 - [khmernormalizer](https://github.com/seanghay/khmernormalizer) (MIT) - Khmer text normalization
 - [OpenCV](https://opencv.org/) (Apache 2.0) - Image processing and augmentation
