@@ -39,7 +39,7 @@ keys are accepted (normalized to `snake_case`).
 height: 48
 # width: null          # omit for variable width
 color-mode: 1          # 1 = grayscale, 3 = RGB
-fonts-dir: fonts/
+fonts: fonts/           # root with khmer/ and english/ subdirs
 font-mode: random
 copies: 3
 mixed-font-prob: 0.0
@@ -106,142 +106,120 @@ norm_no_fix_line_breaks: false
 norm_passthrough: false
 
 # Augmentation methods
-# Each method: prob (0-1), min intensity (0-1), max intensity (0-1)
+# Each method takes three flat keys: <name>-prob (0-1), <name>-min, <name>-max.
 # Exception: extreme_resize's min/max are absolute pixel heights, not [0, 1]
 # One augmentation applied per image (isolated, not stacked)
 
-sauvola:
-  prob: 0.2
-  min: 0.1
-  max: 0.9
+sauvola-prob: 0.2
+sauvola-min: 0.1
+sauvola-max: 0.9
 
-geo_warp:
-  prob: 0.2
-  min: 0.1
-  max: 0.9
+geo-warp-prob: 0.2
+geo-warp-min: 0.1
+geo-warp-max: 0.9
 
-vertical_crop:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+vertical-crop-prob: 0.0
+vertical-crop-min: 0.1
+vertical-crop-max: 0.9
 
-blur:
-  prob: 0.4
-  min: 0.1
-  max: 0.9
+blur-prob: 0.4
+blur-min: 0.1
+blur-max: 0.9
 
-distortion:
-  prob: 0.3
-  min: 0.1
-  max: 0.9
+distortion-prob: 0.3
+distortion-min: 0.1
+distortion-max: 0.9
 
-albu_noise:
-  prob: 0.4
-  min: 0.1
-  max: 0.9
+albu-noise-prob: 0.4
+albu-noise-min: 0.1
+albu-noise-max: 0.9
 
-jpeg_compression:
-  prob: 0.4
-  min: 0.1
-  max: 0.9
+jpeg-compression-prob: 0.4
+jpeg-compression-min: 0.1
+jpeg-compression-max: 0.9
 
-rotation:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+rotation-prob: 0.0
+rotation-min: 0.1
+rotation-max: 0.9
 
-salt_pepper:
-  prob: 0.15
-  min: 0.1
-  max: 0.9
+salt-pepper-prob: 0.15
+salt-pepper-min: 0.1
+salt-pepper-max: 0.9
 
-background_texture:
-  prob: 0.35
-  min: 0.1
-  max: 0.9
+background-texture-prob: 0.35
+background-texture-min: 0.1
+background-texture-max: 0.9
 
-lowdpi:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+lowdpi-prob: 0.0
+lowdpi-min: 0.1
+lowdpi-max: 0.9
 
-oversample:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+oversample-prob: 0.0
+oversample-min: 0.1
+oversample-max: 0.9
 
 # min/max are absolute pixel heights (not [0, 1]) -- see Augmentation Method Fields below
-extreme_resize:
-  prob: 0.0
-  min: 8
-  max: 1920
+extreme-resize-prob: 0.0
+extreme-resize-min: 8
+extreme-resize-max: 1920
 
-low_contrast_caption:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+low-contrast-caption-prob: 0.0
+low-contrast-caption-min: 0.1
+low-contrast-caption-max: 0.9
 
 # Online augmentations (default disabled)
-perspective:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+perspective-prob: 0.0
+perspective-min: 0.1
+perspective-max: 0.9
 
-elastic:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+elastic-prob: 0.0
+elastic-min: 0.1
+elastic-max: 0.9
 
-random_crop:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+random-crop-prob: 0.0
+random-crop-min: 0.1
+random-crop-max: 0.9
 
-online_blur:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+online-blur-prob: 0.0
+online-blur-min: 0.1
+online-blur-max: 0.9
 
-online_noise:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+online-noise-prob: 0.0
+online-noise-min: 0.1
+online-noise-max: 0.9
 
-hsv:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+hsv-prob: 0.0
+hsv-min: 0.1
+hsv-max: 0.9
 
-reverse:
-  prob: 0.0
-  min: 0.0
-  max: 1.0
+reverse-prob: 0.0
+reverse-min: 0.0
+reverse-max: 1.0
 
-brightness_contrast:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+brightness-contrast-prob: 0.0
+brightness-contrast-min: 0.1
+brightness-contrast-max: 0.9
 
-pixelation:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+pixelation-prob: 0.0
+pixelation-min: 0.1
+pixelation-max: 0.9
 
-gradient_illumination:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+gradient-illumination-prob: 0.0
+gradient-illumination-min: 0.1
+gradient-illumination-max: 0.9
 
-morphological:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+morphological-prob: 0.0
+morphological-min: 0.1
+morphological-max: 0.9
 
-anisotropic_dilation:
-  prob: 0.0
-  min: 0.1
-  max: 0.9
+anisotropic-dilation-prob: 0.0
+anisotropic-dilation-min: 0.1
+anisotropic-dilation-max: 0.9
 ```
+
+> **Augmentation keys must be flat.** The YAML loader reads top-level keys only;
+> a nested mapping (`sauvola: {prob: 0.2}`) is skipped with a warning and the
+> default is kept. See [Augmentation Method Fields](#augmentation-method-fields).
 
 ## Text decoration
 
@@ -281,13 +259,20 @@ the underlying glyph shapes intact — the rendered text is still the ground-tru
 
 ## Augmentation Method Fields
 
-Each augmentation method is configured with three values:
+Each augmentation method is configured with three **flat top-level keys** named
+`<method>-prob`, `<method>-min` and `<method>-max`, where `<method>` is the method
+name with underscores written as hyphens (`geo_warp` → `geo-warp-prob`):
 
-| Field | Type | Range | Description |
+| Key | Type | Range | Description |
 |-------|------|-------|-------------|
-| `prob` | float | [0, 1] | Probability weight for selecting this method |
-| `min` | float | [0, 1] | Minimum intensity (normalized; clamped to ≥ 0) |
-| `max` | float | [0, 1] | Maximum intensity (clamped to ≤ 1; ≥ min) |
+| `<method>-prob` | float | [0, 1] | Probability weight for selecting this method |
+| `<method>-min` | float | [0, 1] | Minimum intensity (normalized; clamped to ≥ 0) |
+| `<method>-max` | float | [0, 1] | Maximum intensity (clamped to ≤ 1; ≥ min) |
+
+Nested mappings are **not** read — `sauvola: {prob: 0.2}` is dropped with
+`Config key 'sauvola' is a nested mapping; only flat keys are supported, skipping.` on stderr and
+the default is kept. (A key matching no flag warns separately with
+`[config] WARNING: Unrecognized keys …` — that one usually means a typo.)
 
 **Exception:** `extreme_resize`'s `min`/`max` are absolute target heights in *pixels*
 (default `8`/`1920`, clamped to `min ≥ 1` and `max ≥ min`), not normalized `[0, 1]`
@@ -304,16 +289,13 @@ A method with `prob: 0.4` is selected twice as often as one with `prob: 0.2`.
 ### Aggressive blur, no other augmentation
 
 ```yaml
-blur:
-  prob: 1.0
-  min: 0.3
-  max: 0.9
+blur-prob: 1.0
+blur-min: 0.3
+blur-max: 0.9
 
-# Disable all others by setting prob: 0
-sauvola:
-  prob: 0.0
-geo_warp:
-  prob: 0.0
+# Disable all others by setting prob to 0
+sauvola-prob: 0.0
+geo-warp-prob: 0.0
 # ... etc
 ```
 

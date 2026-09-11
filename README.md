@@ -187,6 +187,20 @@ See [CLI_REFERENCE.md](docs/CLI_REFERENCE.md) for complete command documentation
 See [RUST_ACCELERATION.md](docs/RUST_ACCELERATION.md) for what's accelerated,
 how the native extension is built/installed, and how to iterate on the `rust/` crate.
 
+## Documentation
+
+The **[wiki](https://github.com/LazyGreed/khocr-gen/wiki)** is the complete guide — installation,
+a first end-to-end run, every CLI flag, all configuration keys, fonts, variable line height,
+decorations and effects, the augmentation catalog, output formats, architecture, and
+troubleshooting. Start at
+[Getting Started](https://github.com/LazyGreed/khocr-gen/wiki/Getting-Started); the wiki sidebar
+lists every page.
+
+The wiki source lives in [`wiki/`](wiki/) and is published by
+`./scripts/publish_wiki.sh` — see [`wiki/README.md`](wiki/README.md). The long-form reference guides
+under [`docs/`](docs/) still ship with the repository and remain the in-repo reference for their
+topics; the wiki is the user-facing guide and is not generated from them.
+
 ## Development
 
 ```bash
