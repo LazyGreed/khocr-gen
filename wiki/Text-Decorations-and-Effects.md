@@ -10,11 +10,12 @@ Two independent systems change how a line *looks* before any augmentation is app
 Both are sampled per line at render time, on the clean canvas, *before* augmentation, and both are
 disabled by default (`prob: 0`).
 
-## Why this matters
-
 The rendered text is still the ground-truth OCR label. Every decoration and effect is designed to
 change appearance without changing the underlying glyph shapes, so you can train a recogniser on
 stylised text without corrupting its labels.
+
+When `--record-metadata` is set, the active decoration names are recorded per sample in
+`metadata.jsonl` under the `decorations` key. See **[Output and Storage](Output-and-Storage)**.
 
 ## Text decorations
 
@@ -122,11 +123,6 @@ khocr-gen verify --fonts fonts --method text_deco_underline text_effect_neon
 
 The full set of `--method` names for these is `text_deco_{bold,color,italic,subscript,superscript,underline}`
 and `text_effect_{background,echo,glitch,glow,hollow,huge,neon,outline,pixel,shadow,tiny,transparent}`.
-
-## In metadata
-
-When `--record-metadata` is set, the active decoration names are recorded per sample in
-`metadata.jsonl` under the `decorations` key. See **[Output and Storage](Output-and-Storage)**.
 
 ## Configuration examples
 

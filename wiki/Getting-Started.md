@@ -1,7 +1,7 @@
 # Getting Started
 
 This page takes you from nothing to a training-ready dataset and shows you how to inspect what
-came out. Every command below is copy-pasteable.
+came out.
 
 ## 0. Before you start
 

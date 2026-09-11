@@ -1,7 +1,6 @@
 # Fonts
 
-Fonts drive how text looks, and the generator is script-aware: Khmer text and English text are
-drawn from separate pools.
+The generator is script-aware: Khmer text and English text are drawn from separate pools.
 
 ## Directory layout
 

@@ -55,7 +55,7 @@ Cause: the font directory layout is wrong, or the pool is empty.
 
 Fix: the root given to `--fonts` must contain `khmer/` and/or `english/` subdirectories with
 `.ttf`/`.otf`/`.ttc`/`.woff`/`.woff2` files (scanned recursively). Fonts placed directly in the root
-join both pools as fallbacks. Check the path is what you think it is — `--fonts fonts` is relative to
+join both pools as fallbacks. Check the path is what you think it is: `--fonts fonts` is relative to
 the current working directory.
 
 ### Images are empty or missing while others render fine
@@ -64,7 +64,7 @@ Cause: no font in the pool covers the glyphs of those lines, and the retry budge
 Khmer coverage varies a lot between fonts.
 
 Fix: add more Khmer fonts (especially one with broad coverage), and raise `--retry-limit`.
-Check `generation_errors.jsonl` in the split directory — it records render failures. See
+Check `generation_errors.jsonl` in the split directory; it records render failures. See
 **[Fonts](Fonts)**.
 
 ### Bold or italic lines never appear
@@ -83,8 +83,8 @@ Fix: add `--color-mode 3`.
 
 ### Text looks cut off at the top or bottom
 
-Cause: this should not happen — the renderer resizes rather than crops. If you see clipping,
-suspect a custom `_image-dir` input or a very small explicit `--height`/`--width` combination
+Cause: this should not happen; the renderer resizes rather than crops. If you see clipping,
+suspect a custom `--image-dir` input or a very small explicit `--height`/`--width` combination
 pushing glyphs outside the canvas at render time.
 
 Fix: reproduce with a minimal case and file an issue with the text, font and flags. As a
@@ -186,7 +186,7 @@ Fix: expected. Control heights with `--min-line-height` / `--max-line-height`.
 ### Memory grows during a long run
 
 The font face caches are bounded (LRU, 1024 entries) and were specifically fixed to stop unbounded
-growth. If you still see growth, `--workers` multiplies the per-process footprint — lower it, and
+growth. If you still see growth, `--workers` multiplies the per-process footprint; lower it, and
 prefer `random` over `all` font mode. See the memory fixes in
 [CHANGELOG.md](https://github.com/LazyGreed/khocr-gen/blob/main/CHANGELOG.md).
 
@@ -241,7 +241,7 @@ Fix: pass pixel values, e.g. `--min 16 --max 800`.
 
 ### `view --lmdb` finds nothing
 
-Cause: `--lmdb` must point at the directory containing `data.mdb` — usually
+Cause: `--lmdb` must point at the directory containing `data.mdb`, usually
 `data/<split>/lmdb`, not `data/` or `data/<split>`.
 
 Fix: `khocr-gen view --lmdb data/train/lmdb --summary`.

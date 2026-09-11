@@ -1,7 +1,7 @@
 # Architecture
 
 This page is for people reading or changing the code. It maps the modules and traces the
-generation pipeline. The parallelism model gets its own section.
+generation pipeline.
 
 ## Repository layout
 

@@ -66,7 +66,7 @@ and not a bug.
 ### Does `--seed` give me reproducible images?
 
 Partly. `--seed` controls the **train/val/test split** shuffle. It doesn't seed rendering,
-decorations, effects, augmentation or variable-height sampling — those draw from the module-level
+decorations, effects, augmentation or variable-height sampling; those draw from the module-level
 `random`. Same seed ⇒ same split; not necessarily the same pixels. See
 **[Variable Line Height](Variable-Line-Height)**.
 
@@ -102,7 +102,7 @@ merged `vocab.json`.
 
 ### Why was my val/test split empty?
 
-If you set only one of `--val-percent` / `--test-percent`, the other becomes 0 — that's the
+If you set only one of `--val-percent` / `--test-percent`, the other becomes 0; that's the
 documented behaviour. Use `--split-ratios` for explicit control. See
 **[Corpus and Normalization](Corpus-and-Normalization)**.
 
@@ -126,7 +126,7 @@ See **[Configuration](Configuration)**.
 ### What's the difference between decorations and effects?
 
 Decorations (color, underline, sub/superscript, bold, italic) **combine**. Effects (shadow, glow,
-outline, …) are **mutually exclusive** — at most one per line, first probability hit wins. Both run
+outline, …) are **mutually exclusive**: at most one per line, first probability hit wins. Both run
 before augmentation. See **[Text Decorations and Effects](Text-Decorations-and-Effects)**.
 
 ### Do effects change the label?
@@ -141,7 +141,7 @@ See **[Rust Acceleration](Rust-Acceleration)** for the reasons.
 
 ### What does `extreme_resize`'s min/max mean?
 
-Pixel heights, not `[0, 1]` intensities — it's the only method like that. Defaults are `8` and
+Pixel heights, not `[0, 1]` intensities; it's the only method like that. Defaults are `8` and
 `1920`.
 
 ### Can I run this in Docker / on a headless server?

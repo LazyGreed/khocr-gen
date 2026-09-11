@@ -48,7 +48,7 @@ Two distinct warnings to watch for, both on **stderr**:
 | A nested mapping (`sauvola:\n  prob: 0.2`) | `Config key 'sauvola' is a nested mapping; only flat keys are supported, skipping.` | The whole block is dropped; the default is kept. |
 | A key that matches no flag (`typo-key: 1`) | `[config] WARNING: Unrecognized keys in 'generate' configuration: typo_key` | The key is dropped; the default is kept. |
 
-Neither is an error, so a mistake silently leaves the default in place — watch the log output when
+Neither is an error, so a mistake silently leaves the default in place; watch the log output when
 editing a config.
 
 > **Note:** the fonts directory key is `fonts` (matching `--fonts`), not `fonts-dir`.
@@ -289,7 +289,7 @@ sauvola-min: 0.1
 sauvola-max: 0.9
 ```
 
-Nested mappings for `normalizer`, `text_deco` and `text_effect` are likewise not read from YAML —
+Nested mappings for `normalizer`, `text_deco` and `text_effect` are likewise not read from YAML;
 use the flat `norm_*`, `text-deco-*` and `text-effect-*` keys documented above.
 
 ## Augmentation method fields
@@ -304,7 +304,7 @@ Each method takes three flat keys, named `<method>-prob`, `<method>-min` and `<m
 | `<method>-max` | float | [0, 1] | Maximum intensity (clamped to ≤ 1; ≥ min) |
 
 **Exception:** `extreme-resize-min`/`extreme-resize-max` are absolute target heights in *pixels*
-(default `8`/`1920`, clamped to `min ≥ 1` and `max ≥ min`), not normalized `[0, 1]` values — see
+(default `8`/`1920`, clamped to `min ≥ 1` and `max ≥ min`), not normalized `[0, 1]` values; see
 **[Augmentation](Augmentation)**.
 
 **How intensities work:** the actual intensity for a given image is sampled uniformly from
@@ -336,7 +336,7 @@ Canva-style per-line effects applied at render time (before augmentation), on th
 as text decorations. Unlike decorations, effects are **mutually exclusive**: each probability is
 rolled independently in a fixed order and the first hit wins, so at most one effect applies per
 line. They combine freely with `text-deco-*`. Every effect keeps the underlying glyph shapes
-intact — the rendered text is still the ground-truth label.
+intact: the rendered text is still the ground-truth label.
 
 | Key | Effect |
 |-----|--------|
