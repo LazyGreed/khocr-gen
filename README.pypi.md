@@ -69,6 +69,12 @@ Config loading order (highest priority wins):
 
 See [CLI_REFERENCE.md](https://github.com/LazyGreed/khocr-gen/blob/main/docs/CLI_REFERENCE.md) for complete command documentation.
 
+## Documentation
+
+The [wiki](https://github.com/LazyGreed/khocr-gen/wiki) is the complete guide: getting started,
+every CLI flag, all configuration keys, fonts, variable line height, decorations and effects, the
+augmentation catalog, output formats, architecture, and troubleshooting.
+
 ## Acknowledgments
 
 khocr-gen builds on excellent open-source libraries:
