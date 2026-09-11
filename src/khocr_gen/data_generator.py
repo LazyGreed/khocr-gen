@@ -47,7 +47,7 @@ class DatasetGenerator:
         self.font_manager = FontManager(language=cfg.language, fonts_dir=cfg.fonts_dir)
         self.renderer = ImageRenderer(self.font_manager, cfg)
 
-    # ── Helpers ────────────────────────────────────────────────────────────
+    # Helpers
 
     @staticmethod
     def _sanitize_label_text(text: str) -> str:
@@ -196,7 +196,7 @@ class DatasetGenerator:
 
         print(f"   Vocabulary saved -> {output_path}")
 
-    # ── Worker config ──────────────────────────────────────────────────────
+    # Worker config
 
     def _render_worker_config(
         self,
@@ -219,7 +219,7 @@ class DatasetGenerator:
         )
         return worker_dict
 
-    # ── Batch iteration ────────────────────────────────────────────────────
+    # Batch iteration
 
     @staticmethod
     def _iter_sample_batches(samples: list[tuple[str, Any]], start_idx: int, chunk_size: int):
@@ -233,7 +233,7 @@ class DatasetGenerator:
         if batch:
             yield batch
 
-    # ── Split generation ───────────────────────────────────────────────────
+    # Split generation
 
     def _generate_split_serial(
         self,
@@ -456,7 +456,7 @@ class DatasetGenerator:
 
         return success_count, heights
 
-    # ── Top-level entrypoints ──────────────────────────────────────────────
+    # Top-level entrypoints
 
     def generate_split(
         self,

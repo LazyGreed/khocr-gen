@@ -65,7 +65,7 @@ _TEXT_PROB_METHODS.update({f"text_effect_{name}": (None, name) for name in TEXT_
 _PIXEL_HEIGHT_METHODS: frozenset[str] = frozenset({"extreme_resize"})
 
 
-# ── Sample texts ──────────────────────────────────────────────────────────
+# Sample texts
 
 _FALLBACK_TEXTS = [
     "Hello World",
@@ -98,7 +98,7 @@ def _load_sample_texts(corpus_path: str | None, count: int, seed: int = 42) -> l
     return texts[:count]
 
 
-# ── Grid helpers ──────────────────────────────────────────────────────────
+# Grid helpers
 
 
 def _stack_images(images: list[np.ndarray], target_w: int) -> np.ndarray:
@@ -153,7 +153,7 @@ def _make_comparison_grid(
     return np.hstack([low_labeled, divider, high_labeled])
 
 
-# ── Main verification logic ───────────────────────────────────────────────
+# Main verification logic
 
 
 def _apply_at_intensity(

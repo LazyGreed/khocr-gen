@@ -139,7 +139,7 @@ class ImageRenderer:
         self._probe_failed_fonts: set[Any] = set()
         self._font_face_cache: dict[str, Any] = {}
 
-    # ── Font caching helpers ────────────────────────────────────────────────
+    # Font caching helpers
 
     @staticmethod
     def _font_cache_key(font: Any) -> Any:
@@ -251,7 +251,7 @@ class ImageRenderer:
         dark_pixels = np.sum(img_array < threshold)
         return (dark_pixels / img_array.size) < min_ratio
 
-    # ── Background/text colour sampling ────────────────────────────────────
+    # Background/text colour sampling
 
     def _sample_bg_and_text_colors(
         self, augment: bool
@@ -356,7 +356,7 @@ class ImageRenderer:
             return (v, v, v), (t, t, t)
         return random.randint(235, 255), random.randint(0, 30)
 
-    # ── Text base rendering ─────────────────────────────────────────────────
+    # Text base rendering
 
     def _sample_decorations(self, text: str) -> DecorStyle:
         """Sample a per-line decoration state from ``cfg.text_deco``/``cfg.text_effect``."""
@@ -824,7 +824,7 @@ class ImageRenderer:
         bg_scalar = bg_color if isinstance(bg_color, int) else bg_color[0]
         return img_array, bg_scalar
 
-    # ── Mixed-font rendering ────────────────────────────────────────────────
+    # Mixed-font rendering
 
     @staticmethod
     def _split_text_into_spans(text: str) -> list[tuple[str, str]]:
@@ -956,7 +956,7 @@ class ImageRenderer:
 
         return np.array(img), base_font
 
-    # ── Font selection ──────────────────────────────────────────────────────
+    # Font selection
 
     def _select_font(self, text: str, target_height: int, retry_limit: int) -> Any | None:
         """Pick a font for *text*, sized proportionally to *target_height* when configured."""
@@ -985,7 +985,7 @@ class ImageRenderer:
     def _sample_target_height(self) -> int:
         return sample_line_height(self._cfg)
 
-    # ── Main render entrypoint ──────────────────────────────────────────────
+    # Main render entrypoint
 
     def render(
         self,
@@ -1180,7 +1180,7 @@ class ImageRenderer:
             _LOGGER.warning("augmentation %r failed: %s", method_name, exc)
             return None
 
-    # ── Augment existing image (image-dir mode) ─────────────────────────────
+    # Augment existing image (image-dir mode)
 
     def augment_image(
         self,
@@ -1203,7 +1203,7 @@ class ImageRenderer:
 
         return results
 
-    # ── Resize to target dimensions ─────────────────────────────────────────
+    # Resize to target dimensions
 
     def _resize_to_target(self, img: np.ndarray, target_height: int | None = None) -> np.ndarray:
         """Resize image to target height, optionally to fixed width.

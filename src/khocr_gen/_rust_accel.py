@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger("khocr_gen._rust_accel")
 
-# ── Try to load the native Rust extension ──────────────────────────────────────
+# Try to load the native Rust extension
 
 _native: Any = None
 
@@ -36,9 +36,6 @@ try:
 except ImportError:
     HAS_RUST_ACCEL = False
     _LOGGER.info("Rust extension not available, using pure-Python fallbacks.")
-
-
-# ── Re-export flag ─────────────────────────────────────────────────────────────
 
 
 def _log_available() -> None:
@@ -52,9 +49,7 @@ def _log_available() -> None:
         _LOGGER.info("Rust acceleration NOT available.")
 
 
-# ══════════════════════════════════════════════════════════════════════════════════
 # Augmentation functions
-# ══════════════════════════════════════════════════════════════════════════════════
 
 # Each entry: (function_name, has_rgb_variant)
 _AUG_FUNCTIONS: list[tuple[str, bool]] = [
@@ -175,9 +170,7 @@ _export_aug_functions()
 del _export_aug_functions
 
 
-# ══════════════════════════════════════════════════════════════════════════════════
 # Font management
-# ══════════════════════════════════════════════════════════════════════════════════
 
 if HAS_RUST_ACCEL:
     assert _native is not None
@@ -228,9 +221,7 @@ else:
             )
 
 
-# ══════════════════════════════════════════════════════════════════════════════════
 # Text span splitting
-# ══════════════════════════════════════════════════════════════════════════════════
 
 if HAS_RUST_ACCEL:
     assert _native is not None
@@ -251,9 +242,7 @@ else:
         return ImageRenderer._split_text_into_spans(text)
 
 
-# ══════════════════════════════════════════════════════════════════════════════════
 # Utilities
-# ══════════════════════════════════════════════════════════════════════════════════
 
 if HAS_RUST_ACCEL:
     assert _native is not None
@@ -288,9 +277,7 @@ else:
         return _write(Path(path), img, fmt=fmt, jpeg_quality=quality)
 
 
-# ══════════════════════════════════════════════════════════════════════════════════
 # Module-level init
-# ══════════════════════════════════════════════════════════════════════════════════
 
 _log_available()
 del _log_available

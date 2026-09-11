@@ -23,9 +23,7 @@ from .normalizer import NormalizerConfig
 if TYPE_CHECKING:
     import argparse
 
-# ──────────────────────────────────────────────────────────────────────────────
 # Per-method augmentation config
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -76,9 +74,7 @@ class ExtremeResizeConfig(AugMethodConfig):
         self.max = float(max(self.min, self.max))
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # Per-line text decoration config
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -184,9 +180,7 @@ class TextDecorationConfig:
         )
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # Per-line text effect config (Canva-style effects: shadow, glow, outline, ...)
-# ──────────────────────────────────────────────────────────────────────────────
 
 TEXT_EFFECT_NAMES: tuple[str, ...] = (
     "background",
@@ -278,9 +272,7 @@ class TextEffectConfig:
         return cls(**kwargs)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # Helpers
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def _resolve_storage(args: argparse.Namespace) -> str:
@@ -298,22 +290,20 @@ def _resolve_storage(args: argparse.Namespace) -> str:
     return "raw"
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # Master config
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 @dataclass
 class GenerationConfig:
     """All parameters that govern synthetic image generation and augmentation."""
 
-    # ── Image sizing ───────────────────────────────────────────────────────
+    # Image sizing
     image_height: int = 48
     image_width: int | None = None
     color_mode: int = 1  # 1 = grayscale, 3 = RGB
     random_align_when_padded: bool = False
 
-    # ── Variable line height ───────────────────────────────────────────────
+    # Variable line height
     line_height_mode: str = "fixed"  # "fixed" | "variable" | "bucketed"
     min_line_height: int = 32
     max_line_height: int = 96
@@ -332,14 +322,14 @@ class GenerationConfig:
     # Optional per-sample metadata sidecar
     record_metadata: bool = False
 
-    # ── Font / language ────────────────────────────────────────────────────
+    # Font / language
     language: str = "mixed"
     fonts_dir: str = "fonts"
     mixed_font_prob: float = 0.0
     font_mode: str = "random"  # "random" | "all"
     copies: int = 3  # augmented copies per line when font_mode=random
 
-    # ── Corpus ─────────────────────────────────────────────────────────────
+    # Corpus
     corpus_path: str = ""
     min_length: int = 1
     max_length: int = 260
@@ -352,7 +342,7 @@ class GenerationConfig:
     rare_char_percentile: float = 5.0
     rare_char_multiplier: float = 3.0
 
-    # ── Output ─────────────────────────────────────────────────────────────
+    # Output
     output_dir: str = "data"
     vocab_path: str = ""
     skip_vocab: bool = False
@@ -366,24 +356,20 @@ class GenerationConfig:
         "random"  # "default" | "paper_tones" | "colored" | "dark_mode" | "gradient" | "random"
     )
 
-    # ── Worker reliability ─────────────────────────────────────────────────
+    # Worker reliability
     workers: int = 0  # 0 = auto
     worker_timeout: int = 300  # seconds; 0 = no timeout
     retry_limit: int = 10
 
-    # ── LMDB packing ───────────────────────────────────────────────────────
+    # LMDB packing
     pack_lmdb: bool = False
     lmdb_jpeg_quality: int = 90
     lmdb_map_size_gb: int = 256
 
-    # ── DPI rendering mode ─────────────────────────────────────────────────
+    # DPI rendering mode
     dpi_mode: str = "native"  # "native" | "oversample" | "lowdpi"
 
-    # ───────────────────────────────────────────────────────────────────────
     # Augmentation methods - each has {prob, min, max}
-    # ───────────────────────────────────────────────────────────────────────
-
-    # ── Augmentation methods ──
 
     # Sauvola local-threshold degradation
     sauvola: AugMethodConfig = field(
@@ -515,18 +501,16 @@ class GenerationConfig:
         default_factory=lambda: AugMethodConfig(prob=0.0, min=0.1, max=0.9)
     )
 
-    # ── Normalizer config ──────────────────────────────────────────────────
+    # Normalizer config
     normalizer: NormalizerConfig = field(default_factory=NormalizerConfig)
 
-    # ── Text decorations ──────────────────────────────────────────────────
+    # Text decorations
     text_deco: TextDecorationConfig = field(default_factory=TextDecorationConfig)
 
-    # ── Text effects (shadow, glow, outline, ...) ───────────────────────────
+    # Text effects (shadow, glow, outline, ...)
     text_effect: TextEffectConfig = field(default_factory=TextEffectConfig)
 
-    # ───────────────────────────────────────────────────────────────────────
     # Split ratio resolution
-    # ───────────────────────────────────────────────────────────────────────
 
     def resolve_split_ratios(self) -> tuple[float, float, float]:
         """Resolve (train_ratio, val_ratio, test_ratio) from config fields.
@@ -593,9 +577,7 @@ class GenerationConfig:
         # Default: 80/10/10
         return (0.80, 0.10, 0.10)
 
-    # ───────────────────────────────────────────────────────────────────────
     # CLI
-    # ───────────────────────────────────────────────────────────────────────
 
     # -- Helper to build AugMethodConfig CLI flags --
     _AUG_METHODS: ClassVar[tuple[tuple[str, str], ...]] = (
@@ -641,7 +623,7 @@ class GenerationConfig:
     def add_args(parser: argparse.ArgumentParser) -> None:
         """Register all CLI arguments for generation."""
 
-        # ── Rendering ──────────────────────────────────────────────────────
+        # Rendering
         g_render = parser.add_argument_group("Rendering")
         g_render.add_argument(
             "--fonts",
@@ -676,7 +658,7 @@ class GenerationConfig:
             help="Random left/center/right alignment when --width pads the image",
         )
 
-        # ── Variable line height ─────────────────────────────────────────────
+        # Variable line height
         g_vh = parser.add_argument_group("Variable line height")
         g_vh.add_argument(
             "--line-height-mode",
@@ -806,7 +788,7 @@ class GenerationConfig:
             help="Font selection retries per image when font lacks glyphs",
         )
 
-        # ── Corpus ─────────────────────────────────────────────────────────
+        # Corpus
         g_corpus = parser.add_argument_group("Corpus")
         g_corpus.add_argument(
             "--corpus",
@@ -924,7 +906,7 @@ class GenerationConfig:
             "corpus must be labels.txt file)",
         )
 
-        # ── Output ─────────────────────────────────────────────────────────
+        # Output
         g_out = parser.add_argument_group("Output")
         g_out.add_argument(
             "--output",
@@ -976,7 +958,7 @@ class GenerationConfig:
             help="Storage mode: raw = image files only, lmdb = pack and delete, both = save + pack + keep (default: raw)",
         )
 
-        # ── LMDB packing ───────────────────────────────────────────────────
+        # LMDB packing
         g_lmdb = parser.add_argument_group("LMDB Packing")
         g_lmdb.add_argument(
             "--pack-lmdb",
@@ -1003,7 +985,7 @@ class GenerationConfig:
             help="LMDB map size in GiB (default: 256)",
         )
 
-        # ── Workers ────────────────────────────────────────────────────────
+        # Workers
         g_workers = parser.add_argument_group("Workers")
         g_workers.add_argument(
             "--workers",
@@ -1020,7 +1002,7 @@ class GenerationConfig:
             help="Seconds before a worker batch times out (default: 300; 0 = no limit)",
         )
 
-        # ── DPI ────────────────────────────────────────────────────────────
+        # DPI
         g_dpi = parser.add_argument_group("DPI simulation")
         g_dpi.add_argument(
             "--dpi-mode",
@@ -1029,7 +1011,7 @@ class GenerationConfig:
             help="DPI rendering strategy (default: native)",
         )
 
-        # ── Rendering style ─────────────────────────────────────────────────
+        # Rendering style
         g_style = parser.add_argument_group("Rendering style")
         g_style.add_argument(
             "--bg-color-mode",
@@ -1046,13 +1028,13 @@ class GenerationConfig:
             ),
         )
 
-        # ── Text decoration ──────────────────────────────────────────────────
+        # Text decoration
         TextDecorationConfig.add_args(parser)
 
-        # ── Text effects ────────────────────────────────────────────────────
+        # Text effects
         TextEffectConfig.add_args(parser)
 
-        # ── Augmentation methods: prob, min, max per method ────────────────
+        # Augmentation methods: prob, min, max per method
         g_aug = parser.add_argument_group(
             "Augmentation methods",
             "Each method has: --<name>-prob F, --<name>-min F, --<name>-max F\n"
@@ -1084,7 +1066,7 @@ class GenerationConfig:
                 help=f"Maximum intensity for {display_name} ({range_unit})",
             )
 
-        # ── Normalizer ─────────────────────────────────────────────────────
+        # Normalizer
         NormalizerConfig.add_args(parser)
 
     @classmethod
@@ -1183,9 +1165,7 @@ class GenerationConfig:
             setattr(config, attr_name, aug_cfg)
         return config
 
-    # ───────────────────────────────────────────────────────────────────────
     # Introspection helpers
-    # ───────────────────────────────────────────────────────────────────────
 
     def iter_aug_methods(self) -> list[tuple[str, AugMethodConfig]]:
         """Yield (attr_name, AugMethodConfig) for every augmentation method."""
@@ -1200,9 +1180,7 @@ class GenerationConfig:
         """Return only augmentation methods with prob > 0."""
         return [(name, cfg) for name, cfg in self.iter_aug_methods() if cfg.enabled]
 
-    # ───────────────────────────────────────────────────────────────────────
     # Serialisation (for IPC / config file)
-    # ───────────────────────────────────────────────────────────────────────
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a plain dict for cross-process IPC and YAML export."""

@@ -34,7 +34,7 @@ try:
 except ImportError:
     HAS_ALBUMENTATIONS = False
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# Constants
 
 _AUTO_PARALLEL_MIN_SAMPLES = 2_048
 _DEFAULT_RENDER_CHUNK_SIZE = 64
@@ -42,7 +42,7 @@ _MAX_RENDER_CHUNK_SIZE = 256
 _MAX_ERROR_MESSAGES = 10
 
 
-# ── Helper ────────────────────────────────────────────────────────────────────
+# Helper
 
 
 def _normalize_odd_kernel_limit(value: int, minimum: int = 3) -> int:
@@ -52,7 +52,7 @@ def _normalize_odd_kernel_limit(value: int, minimum: int = 3) -> int:
     return limit
 
 
-# ── Output helpers ────────────────────────────────────────────────────────────
+# Output helpers
 
 
 def write_output_image(
@@ -82,9 +82,7 @@ def write_output_image(
     return cv2.imwrite(str(out_path), output, params)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
 # Augmentation method implementations
-# ──────────────────────────────────────────────────────────────────────────────
 
 
 def _estimate_bg(img: np.ndarray) -> int:
@@ -108,7 +106,7 @@ def _estimate_bg_per_channel(img: np.ndarray) -> tuple[float, ...]:
     return tuple(float(v) for v in np.median(border, axis=0))
 
 
-# ── Sauvola ───────────────────────────────────────────────────────────────────
+# Sauvola
 
 
 def apply_sauvola(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -146,7 +144,7 @@ def apply_sauvola(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarra
     return degraded
 
 
-# ── Geometric warp ────────────────────────────────────────────────────────────
+# Geometric warp
 
 
 def apply_geo_warp(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -184,7 +182,7 @@ def apply_geo_warp(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarr
     return warped
 
 
-# ── Vertical crop ─────────────────────────────────────────────────────────────
+# Vertical crop
 
 
 def apply_vertical_crop(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -213,7 +211,7 @@ def apply_vertical_crop(img: np.ndarray, intensity: float, **kwargs: Any) -> np.
         return np.vstack((pad, cropped))
 
 
-# ── Blur ──────────────────────────────────────────────────────────────────────
+# Blur
 
 
 def apply_blur(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -241,7 +239,7 @@ def apply_blur(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
         return img
 
 
-# ── Distortion ────────────────────────────────────────────────────────────────
+# Distortion
 
 
 def apply_distortion(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -267,7 +265,7 @@ def apply_distortion(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nda
         return img
 
 
-# ── Noise ─────────────────────────────────────────────────────────────────────
+# Noise
 
 
 def apply_albu_noise(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -299,7 +297,7 @@ def apply_albu_noise(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nda
         return img
 
 
-# ── JPEG compression ──────────────────────────────────────────────────────────
+# JPEG compression
 
 
 def apply_jpeg_compression(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -320,7 +318,7 @@ def apply_jpeg_compression(img: np.ndarray, intensity: float, **kwargs: Any) -> 
     return decoded
 
 
-# ── Rotation ──────────────────────────────────────────────────────────────────
+# Rotation
 
 
 def apply_rotation(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -359,7 +357,7 @@ def apply_rotation(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarr
     return rotated
 
 
-# ── Salt-and-pepper noise ─────────────────────────────────────────────────────
+# Salt-and-pepper noise
 
 
 def apply_salt_pepper(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -391,7 +389,7 @@ def apply_salt_pepper(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nd
     return out
 
 
-# ── Background texture ────────────────────────────────────────────────────────
+# Background texture
 
 
 def apply_background_texture(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -557,7 +555,7 @@ def apply_background_texture(img: np.ndarray, intensity: float, **kwargs: Any) -
     return np.clip(out, 0.0, 255.0).astype(np.uint8)
 
 
-# ── Low-contrast small caption text ──────────────────────────────────────────
+# Low-contrast small caption text
 
 
 def apply_low_contrast_caption(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -594,7 +592,7 @@ def apply_low_contrast_caption(img: np.ndarray, intensity: float, **kwargs: Any)
     return softened
 
 
-# ── Low DPI ───────────────────────────────────────────────────────────────────
+# Low DPI
 
 
 def apply_lowdpi(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -609,7 +607,7 @@ def apply_lowdpi(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray
     return cv2.resize(small, (w, h), interpolation=cv2.INTER_LANCZOS4)
 
 
-# ── Oversample ────────────────────────────────────────────────────────────────
+# Oversample
 
 
 def apply_oversample(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -624,7 +622,7 @@ def apply_oversample(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nda
     return cv2.filter2D(img, -1, kernel)
 
 
-# ── Extreme resize ──────────────────────────────────────────────────────────
+# Extreme resize
 
 
 def apply_extreme_resize(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -649,7 +647,7 @@ def apply_extreme_resize(img: np.ndarray, intensity: float, **kwargs: Any) -> np
     return cv2.resize(img, (target_w, target_h), interpolation=interp)
 
 
-# ── Perspective warp (online) ─────────────────────────────────────────────────
+# Perspective warp (online)
 
 
 def apply_perspective(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -676,7 +674,7 @@ def apply_perspective(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nd
     return cv2.warpPerspective(img, m, (w, h), borderValue=border_val)
 
 
-# ── Elastic distortion ────────────────────────────────────────────────────────
+# Elastic distortion
 
 
 def apply_elastic(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -700,7 +698,7 @@ def apply_elastic(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarra
     return cv2.remap(img, map_x, map_y, cv2.INTER_LINEAR)
 
 
-# ── Random height crop ────────────────────────────────────────────────────────
+# Random height crop
 
 
 def apply_random_crop(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -717,7 +715,7 @@ def apply_random_crop(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nd
     return cv2.resize(cropped, (w, h), interpolation=cv2.INTER_LINEAR)
 
 
-# ── Online blur ───────────────────────────────────────────────────────────────
+# Online blur
 
 
 def apply_online_blur(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -736,7 +734,7 @@ def apply_online_blur(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nd
     return cv2.GaussianBlur(img, (kernel, kernel), 0)
 
 
-# ── Online noise ──────────────────────────────────────────────────────────────
+# Online noise
 
 
 def apply_online_noise(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -748,7 +746,7 @@ def apply_online_noise(img: np.ndarray, intensity: float, **kwargs: Any) -> np.n
     return np.clip(img.astype(np.float32) + noise, 0, 255).astype(np.uint8)
 
 
-# ── HSV color jitter ──────────────────────────────────────────────────────────
+# HSV color jitter
 
 
 def apply_hsv(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -766,7 +764,7 @@ def apply_hsv(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
     return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB)
 
 
-# ── Color reversal ────────────────────────────────────────────────────────────
+# Color reversal
 
 
 def apply_reverse(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -776,7 +774,7 @@ def apply_reverse(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarra
     return (255 - img).astype(np.uint8)
 
 
-# ── Brightness/contrast ───────────────────────────────────────────────────────
+# Brightness/contrast
 
 
 def apply_brightness_contrast(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -789,7 +787,7 @@ def apply_brightness_contrast(img: np.ndarray, intensity: float, **kwargs: Any) 
     return cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
 
 
-# ── Pixelation ────────────────────────────────────────────────────────────────
+# Pixelation
 
 
 def apply_pixelation(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -805,7 +803,7 @@ def apply_pixelation(img: np.ndarray, intensity: float, **kwargs: Any) -> np.nda
     return cv2.resize(small, (w, h), interpolation=interp)
 
 
-# ── Gradient illumination ─────────────────────────────────────────────────────
+# Gradient illumination
 
 
 def apply_gradient_illumination(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -834,7 +832,7 @@ def apply_gradient_illumination(img: np.ndarray, intensity: float, **kwargs: Any
     return np.clip(img.astype(np.float32) * gradient, 0, 255).astype(np.uint8)
 
 
-# ── Morphological ─────────────────────────────────────────────────────────────
+# Morphological
 
 
 def apply_morphological(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -859,7 +857,7 @@ def apply_morphological(img: np.ndarray, intensity: float, **kwargs: Any) -> np.
             return cv2.dilate(img, kernel, iterations=1)
 
 
-# ── Anisotropic dilation ──────────────────────────────────────────────────────
+# Anisotropic dilation
 
 
 def apply_anisotropic_dilation(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
@@ -874,7 +872,7 @@ def apply_anisotropic_dilation(img: np.ndarray, intensity: float, **kwargs: Any)
     return cv2.dilate(img, kernel, iterations=1)
 
 
-# ─── Registry ─────────────────────────────────────────────────────────────────
+# Registry
 
 # Methods that produce better results when operating on RGB input rather than grayscale.
 _RGB_PREFERRED_METHODS: frozenset[str] = frozenset(
@@ -919,7 +917,7 @@ AUG_METHODS: dict[str, Any] = {
     "anisotropic_dilation": apply_anisotropic_dilation,
 }
 
-# ── Replace with Rust-accelerated implementations when available ─────────────
+# Replace with Rust-accelerated implementations when available
 
 _RUST_METHODS = [
     "sauvola",

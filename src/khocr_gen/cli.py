@@ -20,7 +20,6 @@ from .config_loader import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-# ── Command module protocol ────────────────────────────────────────────────
 
 CommandModule = Any  # duck-typed: has add_args(parser) and run(args) -> int
 
