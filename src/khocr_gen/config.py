@@ -579,7 +579,7 @@ class GenerationConfig:
 
     # CLI
 
-    # -- Helper to build AugMethodConfig CLI flags --
+    # Helper to build AugMethodConfig CLI flags
     _AUG_METHODS: ClassVar[tuple[tuple[str, str], ...]] = (
         # (attr_name, display_name)
         ("sauvola", "Sauvola threshold degradation"),

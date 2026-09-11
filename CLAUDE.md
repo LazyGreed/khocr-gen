@@ -3,7 +3,7 @@
 Orientation for `khocr-gen`. If you are changing the generator, the augmentation
 pipeline, or the CLI, the detail you need is likely in here or in `docs/`.
 
-Anything with words in it, docs, comments, commit messages, issues, follows
+Anything with words in it (docs, comments, commit messages, issues) follows
 [HOUSE-STYLE.md](HOUSE-STYLE.md).
 
 ## Project
@@ -29,8 +29,10 @@ uv run ty check              # types, non-blocking in CI
 cd rust && cargo build --release   # Rust acceleration crate on its own
 ```
 
-CI runs all of the above (`.github/workflows/ci.yml`), on Python 3.12 and 3.13. Ruff is a
-hard gate; `ty`, `cargo fmt --check`, and `cargo clippy` are visible but allowed to fail.
+CI (`.github/workflows/ci.yml`) runs the install, lint, type-check, test and Rust build steps
+on Python 3.12 and 3.13. It never invokes `khocr-gen` itself, so the CLI surface is only
+covered by whatever the tests import. Ruff is a hard gate; `ty`, `cargo fmt --check` and
+`cargo clippy` are visible but allowed to fail.
 
 ## Layout
 
@@ -57,7 +59,8 @@ locally but does not commit it, so dependency resolution is from `pyproject.toml
 - `wiki/` is the wiki's source of truth. `scripts/publish_wiki.sh` copies `wiki/*.md` into
   the `<repo>.wiki.git` clone, so edit `wiki/`, not the published pages. `wiki/README.md` is
   the one file there that is not a wiki page.
-- Intra-page anchor links exist between the docs (`docs/CLI_REFERENCE.md#variable-line-height`,
-  `wiki/CLI-Reference.md#khocr-gen-verify`). Renaming a heading breaks them.
+- The docs link to each other by heading anchor, both across files
+  (`docs/CLI_REFERENCE.md#variable-line-height`, linked from `README.md`) and within one page
+  (`wiki/CLI-Reference.md#khocr-gen-verify`). Renaming a heading breaks them.
 - The Rust extension is optional. Without it the Python path runs; `_rust_accel.py` is the
   shim that decides which one you get.
