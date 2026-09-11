@@ -78,12 +78,12 @@ max-vertical-padding-ratio: 0.18
 This is the core guarantee of the feature, and it matters most for Khmer.
 
 Every image is rendered on a clean canvas at its **natural size** and then uniformly **resized**
-(never cropped) to the sampled target height. Glyphs — including Khmer upper vowels, lower vowels,
-coeng/subscript forms and stacked diacritics — are therefore never cut off, regardless of which
+(never cropped) to the sampled target height. Glyphs (including Khmer upper vowels, lower vowels,
+coeng/subscript forms and stacked diacritics) are therefore never cut off, regardless of which
 height is sampled. There are no retry loops and no rejected samples: the resize is unconditional
 and lossless with respect to glyph coverage.
 
-`labels.txt` is **unaffected** — variable height is encoded entirely in the image dimensions. The
+`labels.txt` is **unaffected**. Variable height is encoded entirely in the image dimensions. The
 label file format does not change, and neither does vocab generation.
 
 ## Randomness and reproducibility
@@ -92,7 +92,7 @@ Height, font-scale and padding are sampled at render time from the **module-leve
 The sampler functions in `khocr_gen/line_height.py` accept an optional `random.Random` argument,
 but the renderer does not pass one.
 
-`--seed` controls the **train/val/test split shuffle only** — it does not pin the sampled heights.
+`--seed` controls the **train/val/test split shuffle only**. It does not pin the sampled heights.
 Two runs with the same `--seed` therefore produce the same split but different height draws. If you
 need bit-identical images across runs, pin the global `random` state inside your own driver script
 before calling into the generator; the CLI does not expose a render-level seed.

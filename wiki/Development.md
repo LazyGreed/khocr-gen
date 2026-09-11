@@ -11,7 +11,7 @@ uv sync --extra dev      # installs dev deps AND builds the Rust extension via m
 
 `uv sync --extra dev` resolves `khocr-gen-core` from `rust/` as an editable path dependency, so the
 native extension is built and installed as part of the sync. A Rust toolchain
-(`cargo`/`rustc`, edition 2021) is required for this step — see
+(`cargo`/`rustc`, edition 2021) is required for this step. See
 **[Rust Acceleration](Rust-Acceleration)** if you want to skip it.
 
 ## Everyday commands
@@ -49,7 +49,7 @@ Ruff is configured in `pyproject.toml`:
 | isort first-party | `khocr_gen` |
 | Format | double quotes, space indent, magic trailing comma preserved |
 
-Because `E501` is ignored, the formatter — not the linter — decides line breaks. Run
+Because `E501` is ignored, the formatter decides line breaks, not the linter. Run
 `uv run ruff format .` before committing.
 
 ## Tests
@@ -75,8 +75,8 @@ that would have caught it.
 
 ## Type checking
 
-`ty` runs against `src` with `extra-paths = ["typings"]`. It is currently **informational** —
-non-blocking in CI — so treat its output as guidance while the codebase converges. Don't let a new
+`ty` runs against `src` with `extra-paths = ["typings"]`. It is currently **informational** and
+non-blocking in CI, so treat its output as guidance while the codebase converges. Don't let a new
 `ty` error in though; keep the count from growing.
 
 ## CI
@@ -130,7 +130,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Working on the Rust crate
 
-See **[Rust Acceleration](Rust-Acceleration#iterating-on-the-rust-crate)** — in particular the
+See **[Rust Acceleration](Rust-Acceleration#iterating-on-the-rust-crate)**, in particular the
 warning about `cd rust && uv run …` creating a stray `rust/.venv`, and about `uv sync` overwriting a
 hand-built extension.
 
@@ -140,7 +140,7 @@ hand-built extension.
 package description. `docs/` holds the long-form guides, and this wiki mirrors and extends them.
 
 **Any change that affects behaviour, setup, configuration or usage must update the affected docs in
-the same change** — `README.md`, the relevant `docs/*.md`, and the matching wiki page here.
+the same change**: `README.md`, the relevant `docs/*.md`, and the matching wiki page here.
 
 ## See also
 

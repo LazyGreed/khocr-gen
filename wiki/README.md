@@ -2,7 +2,7 @@
 
 This directory is the **source of truth** for the [khocr-gen GitHub wiki](https://github.com/LazyGreed/khocr-gen/wiki).
 
-Each `.md` file here maps 1:1 to a wiki page (the filename, minus `.md`, is the page title — dashes
+Each `.md` file here maps 1:1 to a wiki page (the filename, minus `.md`, is the page title; dashes
 become spaces). `_Sidebar.md` and `_Footer.md` are GitHub's special navigation pages.
 
 ## Pages
@@ -35,7 +35,7 @@ become spaces). `_Sidebar.md` and `_Footer.md` are GitHub's special navigation p
 ```
 
 The script clones the wiki git repository, copies every `.md` from this directory, commits and
-pushes. Wiki content is **not** part of the main repository history — the main repo only holds this
+pushes. Wiki content is **not** part of the main repository history. The main repo only holds this
 source copy.
 
 Editing a page: change the file here, run the publish script, and keep the change in the same
@@ -49,7 +49,7 @@ The two documentation sets are independent and neither is generated from the oth
 | | `docs/*.md` | `wiki/*.md` |
 |---|---|---|
 | Audience | contributors reading the repo | users reading the published wiki |
-| Shipped in | the repository and the source distribution | nothing — the wiki is a separate git repository |
+| Shipped in | the repository and the source distribution | nothing; the wiki is a separate git repository |
 | Authoritative for | long-form design notes (e.g. `VARIABLE_LENGTH_DESIGN.md`) | the published wiki pages |
 
 When a change alters behaviour, setup, configuration or usage, update the affected file in **both**

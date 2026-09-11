@@ -4,8 +4,8 @@
 the generation pipeline: pixel-level augmentation and font glyph checking.
 
 It is built with [PyO3](https://pyo3.rs)/[maturin](https://www.maturin.rs) from the `rust/` crate
-(package name `khocr-gen-core`) and installed as a regular editable dependency of the Python project
-— there is no separate build step.
+(package name `khocr-gen-core`) and installed as a regular editable dependency of the Python project.
+There is no separate build step.
 
 **Every accelerated code path has a pure-Python fallback**, so the project works with or without a
 Rust toolchain. Acceleration is detected once at import time:
@@ -23,7 +23,7 @@ uv sync --extra dev
 ```
 
 Building `khocr-gen-core` requires a Rust toolchain (`cargo`/`rustc`, edition 2021) on `PATH`. If
-it's missing, `uv sync` will fail on that package — installing Rust (<https://rustup.rs>) resolves
+it's missing, `uv sync` will fail on that package. Installing Rust (<https://rustup.rs>) resolves
 it.
 
 There is currently **no pip/PyPI-only path that skips compilation**. The PyPI wheel is pure Python;
@@ -73,8 +73,8 @@ text into contiguous per-script spans, replacing the equivalent pure-Python
 
 ### Utilities
 
-`estimate_bg`, `image_is_blank` and `write_image` — background-colour estimation, blank-canvas
-detection and JPEG/PNG encoding — all have native implementations wired into `augmentation.py`'s
+`estimate_bg`, `image_is_blank` and `write_image` (background-colour estimation, blank-canvas
+detection and JPEG/PNG encoding) all have native implementations wired into `augmentation.py`'s
 helper calls.
 
 ### Built but not wired up
@@ -82,13 +82,13 @@ helper calls.
 - **`RustFontManager`** — a native counterpart to `khocr_gen.fonts.FontManager` (font loading, glyph
   and text support checks, Khmer detection). It is built and exported from `_rust_accel.py`, but the
   generation pipeline still uses the pure-Python `FontManager`, because it needs to hand back real
-  `PIL.ImageFont` objects for `ImageDraw.text()` — `RustFontManager` does not produce those. It is
+  `PIL.ImageFont` objects for `ImageDraw.text()`. `RustFontManager` does not produce those. It is
   available for anyone who wants fast font metadata/coverage queries independent of rendering.
 - **`rendering.rs`** — a from-scratch Rust reimplementation of canvas rendering (clean-canvas draw,
   resize/pad, mixed-font compositing) exists in `rust/src/rendering.rs` but has no
   `#[pyclass]`/`#[pyfunction]` bindings and is not registered in the `_rust_accel` `#[pymodule]` in
-  `lib.rs`. It compiles (with "never used" warnings) but is dead code from Python's perspective — a
-  starting point for a future full-pipeline rendering port, not something currently exercised.
+  `lib.rs`. It compiles (with "never used" warnings) but is dead code from Python's perspective.
+  It's a starting point for a future full-pipeline rendering port, not something currently exercised.
 
 ## Module layout
 
@@ -119,7 +119,7 @@ VIRTUAL_ENV=/path/to/khocr-gen/.venv uv run --with maturin maturin develop --rel
 
 > **Do not** `cd rust && uv run --with maturin maturin develop`. `rust/pyproject.toml` declares its
 > own (maturin) project, so a bare `uv run` from inside `rust/` treats it as a separate project root
-> and creates a stray `rust/.venv` — the extension gets installed there instead of the real project
+> and creates a stray `rust/.venv`. The extension gets installed there instead of the real project
 > environment, and it silently looks like the build "isn't taking effect". Always pin `VIRTUAL_ENV`
 > to the top-level `.venv` (or run from the repo root with `--manifest-path`) when building manually.
 
@@ -135,7 +135,7 @@ uv run python -c "from khocr_gen import _rust_accel as ra; print(ra.HAS_RUST_ACC
 ```
 
 `True` means the extension is loaded and the registry swapped in the native methods. Generation
-output is equivalent either way — the fallbacks implement the same behaviour — but pixel-identical
+output is equivalent either way, because the fallbacks implement the same behaviour. Pixel-identical
 output between Rust and Python paths is not guaranteed for methods that draw from their own thread
 RNG. See the note in **[Augmentation](Augmentation)** about `verify` reproducibility.
 

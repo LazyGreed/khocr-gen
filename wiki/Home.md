@@ -8,7 +8,7 @@
 `khocr-gen` turns a plain text corpus into a labelled image dataset in one command. It renders
 each line of text onto a clean canvas with per-span font selection, samples variable canvas
 heights, decorations and Canva-style text effects, then applies exactly one augmentation from a
-26-method registry — optionally packing the result straight into LMDB for training.
+26-method registry, optionally packing the result straight into LMDB for training.
 
 ```text
 UTF-8 corpus                                                       training data
@@ -45,9 +45,9 @@ New here? Start with **[Getting Started](Getting-Started)**.
 |------|--------------|
 | **Rendering** | Mixed-script (Khmer + English) line rendering with per-span font selection |
 | **Fonts** | `khmer/` and `english/` font pools, real bold/italic variant detection, glyph-coverage checks |
-| **Variable line height** | `fixed` / `variable` / `bucketed` canvas heights with proportional font sizing and random padding — glyphs are never clipped |
-| **Text decorations** | Per-line color, underline, subscript/superscript, italic, bold — combinable |
-| **Text effects** | Canva-style huge/tiny, transparent, shadow, glow, outline, hollow, echo, background, neon, glitch, pixel — mutually exclusive |
+| **Variable line height** | `fixed` / `variable` / `bucketed` canvas heights with proportional font sizing and random padding; glyphs are never clipped |
+| **Text decorations** | Per-line color, underline, subscript/superscript, italic, bold; combinable |
+| **Text effects** | Canva-style huge/tiny, transparent, shadow, glow, outline, hollow, echo, background, neon, glitch, pixel; mutually exclusive |
 | **Backgrounds** | 6 colour palettes (paper tones, pastels, dark mode, gradient, random) and 8 procedural paper textures |
 | **Augmentation** | 26 methods in one registry, one effect per image, configurable `[min, max]` intensity |
 | **Rust acceleration** | 21/26 augmentation methods plus font glyph checking via a native PyO3 extension, with pure-Python fallback |
@@ -92,9 +92,9 @@ New here? Start with **[Getting Started](Getting-Started)**.
 ## Requirements
 
 - Python **≥ 3.12**
-- Rust toolchain (`cargo` / `rustc`, edition 2021) — only to build the optional acceleration extension
+- Rust toolchain (`cargo` / `rustc`, edition 2021), only to build the optional acceleration extension
 - No GPU required; generation is CPU-bound image work
 
 ## License
 
-MIT — see [LICENSE](https://github.com/LazyGreed/khocr-gen/blob/main/LICENSE).
+MIT. See [LICENSE](https://github.com/LazyGreed/khocr-gen/blob/main/LICENSE).

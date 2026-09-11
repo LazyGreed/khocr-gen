@@ -12,7 +12,7 @@ No. Generation is CPU-bound image work, parallelised across processes.
 
 ### Do I need Rust?
 
-No. The Rust extension is an optional accelerator. Every accelerated path has a pure-Python
+No. The Rust extension is an optional accelerator; every accelerated path has a pure-Python
 fallback, so `pip install khocr-gen` works anywhere.
 
 ### Does the PyPI wheel include the Rust extension?
@@ -54,7 +54,7 @@ faked. Add variant files to the pool. See **[Fonts](Fonts)**.
 
 ### Why does `--text-deco-color-prob` do nothing?
 
-Random text colour requires `--color-mode 3` (RGB). In the default grayscale output there is no
+Random text colour requires `--color-mode 3` (RGB). In the default grayscale output there's no
 colour to apply.
 
 ### Why do two `verify` runs differ?
@@ -65,7 +65,7 @@ and not a bug.
 
 ### Does `--seed` give me reproducible images?
 
-Partly. `--seed` controls the **train/val/test split** shuffle. It does not seed rendering,
+Partly. `--seed` controls the **train/val/test split** shuffle. It doesn't seed rendering,
 decorations, effects, augmentation or variable-height sampling — those draw from the module-level
 `random`. Same seed ⇒ same split; not necessarily the same pixels. See
 **[Variable Line Height](Variable-Line-Height)**.
@@ -78,7 +78,7 @@ Downstream loaders must handle non-uniform image dimensions.
 ### Will variable height clip Khmer diacritics?
 
 No. Images are rendered at their natural size and then uniformly **resized** to the sampled height
-— never cropped — so glyphs are never cut off. There are no retries or rejected samples.
+(never cropped), so glyphs are never cut off. There are no retries or rejected samples.
 
 ### What's the difference between `raw`, `lmdb` and `both`?
 
@@ -150,7 +150,7 @@ Yes. Dependencies use `opencv-python-headless`, so no GUI libraries are needed.
 
 ### Is there a viewer?
 
-Yes — `khocr-gen view --lmdb DIR --summary|--output-dir|--labels-only`. For augmenation QA use
+Yes — `khocr-gen view --lmdb DIR --summary|--output-dir|--labels-only`. For augmentation QA use
 `khocr-gen verify`.
 
 ### Is there a Python API?

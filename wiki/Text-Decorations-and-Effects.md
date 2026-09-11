@@ -13,7 +13,7 @@ disabled by default (`prob: 0`).
 ## Why this matters
 
 The rendered text is still the ground-truth OCR label. Every decoration and effect is designed to
-change appearance without changing the underlying glyph shapes — so you can train a recogniser on
+change appearance without changing the underlying glyph shapes, so you can train a recogniser on
 stylised text without corrupting its labels.
 
 ## Text decorations
@@ -32,7 +32,7 @@ Constraints and behaviour:
 - **Random color requires `--color-mode 3`** (RGB). In grayscale output the color decoration
   cannot apply.
 - **Bold and italic are skipped when no matching variant font exists.** They do not synthesise a
-  fake bold/oblique — the renderer looks for a real variant in the font pools. See
+  fake bold/oblique. The renderer looks for a real variant in the font pools. See
   **[Fonts](Fonts)**.
 - Subscript/superscript only move ASCII characters; Khmer combining marks are left alone.
 - Decorations are applied on the clean canvas, so augmentations never interfere with them and vice
@@ -76,7 +76,7 @@ Roll order is alphabetical:
 
 Because effects are mutually exclusive, adding more `--text-effect-*-prob` flags increases the
 share of *stylised* lines but never stacks two effects on one line. To raise the overall rate of
-effects, raise several probabilities together — for example `huge 0.1 + tiny 0.1 + shadow 0.1`
+effects, raise several probabilities together, for example `huge 0.1 + tiny 0.1 + shadow 0.1`
 gives roughly a 27% chance that *some* effect applies.
 
 ```bash
@@ -100,14 +100,14 @@ khocr-gen generate --corpus corpus/corpus.txt --fonts fonts --color-mode 3 \
   --text-effect-shadow-prob 0.1 --text-effect-glow-prob 0.1
 ```
 
-A line rendered with this recipe can be, for example, coloured *and* italic *and* shadowed —
-at most one effect, any number of decorations.
+A line rendered with this recipe can be, for example, coloured *and* italic *and* shadowed.
+At most one effect, any number of decorations.
 
 ## Verifying what you configured
 
 `verify` can render any single decoration or effect at fixed intensity, one at a time, with all
-other probabilities pinned to 0 — useful to confirm an effect looks the way you expect before
-committing to a full generation run:
+other probabilities pinned to 0 (useful for confirming an effect looks the way you expect before
+committing to a full generation run):
 
 ```bash
 # One decoration
@@ -141,5 +141,5 @@ text-effect-shadow-prob: 0.1
 text-effect-outline-prob: 0.1
 ```
 
-> Remember that YAML augmentation-style nested mappings are not read — use the flat
+> Remember that YAML augmentation-style nested mappings are not read; use the flat
 > `text-deco-*` / `text-effect-*` keys. See **[Configuration](Configuration)**.

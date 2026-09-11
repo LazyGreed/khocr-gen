@@ -1,13 +1,13 @@
 # Augmentation
 
-`khocr-gen` provides **26 augmentation methods** in a unified registry. Each generated image
-receives **exactly one** augmentation applied to a clean rendered canvas — effects are never
+`khocr-gen` provides 26 augmentation methods in a unified registry. Each generated image
+receives **exactly one** augmentation, applied to a clean rendered canvas. Effects are never
 stacked.
 
 21 of the 26 methods run through the native Rust extension when it is available (falling back to
 pure Python/OpenCV otherwise). The five that are not accelerated are `distortion`, `albu_noise`,
-`gradient_illumination`, `extreme_resize`, and `low_contrast_caption` — see
-**[Rust Acceleration](Rust-Acceleration)**.
+`gradient_illumination`, `extreme_resize`, and `low_contrast_caption` (see
+**[Rust Acceleration](Rust-Acceleration)**).
 
 ## How it works
 
@@ -25,13 +25,13 @@ P(method_i) = prob_i / Σ prob_j        (over all enabled methods j)
 
 A method with `blur-prob: 0.4` is selected twice as often as one with `sauvola-prob: 0.2`. Setting
 its `-prob` to `0.0` disables a method entirely. Keys are written `<method>-prob`,
-`<method>-min`, `<method>-max` — see **[Configuration](Configuration)**.
+`<method>-min`, `<method>-max`. See **[Configuration](Configuration)**.
 
 ### Intensity
 
-Once a method is chosen, its intensity is sampled **uniformly** from its configured `[min, max]`
-range — both in `[0, 1]` for every method except `extreme_resize`, whose `min`/`max` are absolute
-pixel heights. The method maps the normalized value to physical units:
+Once a method is chosen, its intensity is sampled uniformly from its configured `[min, max]`
+range. Both ends are in `[0, 1]` for every method except `extreme_resize`, whose `min`/`max` are
+absolute pixel heights. The method maps the normalized value to physical units:
 
 | Method | intensity → physical |
 |--------|---------------------|
@@ -123,9 +123,9 @@ Impulse noise: random white (salt) and black (pepper) pixels.
 
 Procedural paper-like texture with three modes:
 
-1. **Fine grain** — per-pixel Gaussian noise
-2. **Coarse blotches** — low-resolution noise upscaled and blurred
-3. **Streaks** — horizontal line artifacts (scanner streaks)
+1. **Fine grain**: per-pixel Gaussian noise
+2. **Coarse blotches**: low-resolution noise upscaled and blurred
+3. **Streaks**: horizontal line artifacts (scanner streaks)
 
 - **Intensity → blend alpha** [0.05, 0.30]
 - Texture is suppressed over dark ink regions to preserve legibility
@@ -147,11 +147,11 @@ Post-hoc sharpening filter (the *rendering-mode* oversample is handled in the re
 ### `extreme_resize` — Extreme source-resolution simulation
 
 Isotropically resizes the clean canvas to a sampled target height in pixels (width scales with it)
-before the pipeline resizes it back to line height — simulating a tiny/pixelated source (small end
-of the range, e.g. `8`) or a huge scan later shrunk down (large end, e.g. `1920`).
+before the pipeline resizes it back to line height. That simulates a tiny/pixelated source (small
+end of the range, e.g. `8`) or a huge scan later shrunk down (large end, e.g. `1920`).
 
-- **Intensity is an absolute pixel height, not a `[0, 1]` fraction** — the only method where this
-  is true. Default range `min=8`, `max=1920`; disabled by default (`prob: 0.0`).
+- **Intensity is an absolute pixel height, not a `[0, 1]` fraction**. It's the only method where
+  this is true. Default range `min=8`, `max=1920`; disabled by default (`prob: 0.0`).
 - Downscale uses `INTER_AREA`, upscale uses `INTER_LINEAR`
 - CLI: `--extreme-resize-prob` / `-min` / `-max`
 
@@ -218,7 +218,7 @@ Saturation and value adjustments (grayscale images pass through unchanged).
 
 Inverts pixel values (dark ↔ light). Common for handling negative / white-on-black text.
 
-- **Intensity ignored** — binary on/off effect
+- **Intensity ignored**: binary on/off effect
 - `255 - pixel` for every pixel
 
 ### `brightness_contrast` — Brightness/contrast jitter
@@ -286,7 +286,7 @@ Via CLI, each method has three flags:
 khocr-gen generate --blur-prob 0.5 --blur-min 0.1 --blur-max 0.9
 ```
 
-Via YAML (flat keys — nested mappings are skipped):
+Via YAML (flat keys; nested mappings are skipped):
 
 ```yaml
 blur-prob: 0.5

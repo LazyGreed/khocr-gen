@@ -9,7 +9,7 @@ You need:
 
 - Python **3.12 or newer**
 - A Khmer font and an English font (`.ttf` / `.otf`)
-- A UTF-8 text corpus — one string per line
+- A UTF-8 text corpus, one string per line
 
 ## 1. Install
 
@@ -28,7 +28,7 @@ khocr-gen --help
 
 ## 2. Lay out fonts
 
-Create two subdirectories — the names matter:
+Create two subdirectories. The names matter:
 
 ```text
 fonts/

@@ -9,7 +9,7 @@ Hello World
 ស្វាគមន៍ Welcome
 ```
 
-Mixed Khmer/English lines are the point of the tool — include them liberally.
+Mixed Khmer/English lines are the point of the tool. Include them liberally.
 
 ```bash
 khocr-gen generate --corpus corpus/corpus.txt --fonts fonts --output data
@@ -38,7 +38,7 @@ This is the cheapest way to sanity-check length filters and `--copies` before a 
 
 ## Train / val / test splits
 
-The corpus is split into three **disjoint** sets of *text strings* — no line of text ever appears in
+The corpus is split into three **disjoint** sets of *text strings*: no line of text ever appears in
 two splits. Splitting is deterministic given `--seed` (default 42).
 
 | Situation | Result |
@@ -69,7 +69,7 @@ khocr-gen generate --corpus corpus/train.txt --test-file corpus/test.txt --fonts
 `--seed` also controls the shuffle that decides *which* texts land in which split, so the same
 corpus + seed reproduces the same split exactly.
 
-> `--seed` does **not** seed rendering or augmentation randomness. See
+> `--seed` does not seed rendering or augmentation randomness. See
 > **[Variable Line Height](Variable-Line-Height)** for the details.
 
 ## Rare-character oversampling
@@ -78,7 +78,7 @@ Khmer (and mixed) corpora often have a long tail: a handful of characters appear
 others dominate. Undersampling the tail hurts recognition of exactly the characters that are
 hardest to learn.
 
-`--oversample-rare-chars` renders **extra copies** of training lines that contain rare characters:
+`--oversample-rare-chars` renders extra copies of training lines that contain rare characters:
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -91,7 +91,7 @@ khocr-gen generate --corpus corpus/corpus.txt --fonts fonts \
   --oversample-rare-chars --rare-char-percentile 20 --rare-char-multiplier 3.0
 ```
 
-**val and test are never oversampled** — they stay at one copy per line, so your evaluation split
+**val and test are never oversampled**: they stay at one copy per line, so your evaluation split
 continues to reflect the natural corpus distribution. Oversampling affects `train` only.
 
 ## Text normalization
@@ -117,7 +117,7 @@ Notes:
   which normalizes Khmer internally.
 - `--norm-passthrough` is the nuclear option: nothing is normalized. Use it only when your corpus
   is already canonical and you want byte-exact labels.
-- The `norm_no_*` flags are negative switches — they *disable* an individual fix. Spelling matters.
+- The `norm_no_*` flags are negative switches: they *disable* an individual fix. Spelling matters.
 
 ## Using pre-existing images (`--image-dir`)
 
@@ -140,6 +140,6 @@ See **[Output and Storage](Output-and-Storage)** for the label format.
 
 ## See also
 
-- **[CLI Reference](CLI-Reference)** — the Corpus flag tables
-- **[Output and Storage](Output-and-Storage)** — `labels.txt`, `vocab.json`, `metadata.jsonl`
-- **[Configuration](Configuration)** — the same settings as YAML keys
+- **[CLI Reference](CLI-Reference)**: the Corpus flag tables
+- **[Output and Storage](Output-and-Storage)**: `labels.txt`, `vocab.json`, `metadata.jsonl`
+- **[Configuration](Configuration)**: the same settings as YAML keys

@@ -1,7 +1,7 @@
 # Architecture
 
-This page is for people reading or changing the code. It maps the modules, traces the generation
-pipeline, and explains the parallelism model.
+This page is for people reading or changing the code. It maps the modules and traces the
+generation pipeline. The parallelism model gets its own section.
 
 ## Repository layout
 
@@ -45,11 +45,11 @@ khocr-gen/
 
 `GenerationConfig` (in `config.py`) is the single source of truth. It owns:
 
-- `add_args(parser)` — registers every CLI flag,
-- `from_args(args)` — builds the config from parsed arguments,
-- `iter_aug_methods()` / `enabled_aug_methods()` — drives the augmentation registry,
-- `resolve_split_ratios()` — normalises the train/val/test ratios,
-- `to_dict()` / `from_dict()` — serialisation for worker processes.
+- `add_args(parser)`: registers every CLI flag,
+- `from_args(args)`: builds the config from parsed arguments,
+- `iter_aug_methods()` / `enabled_aug_methods()`: drives the augmentation registry,
+- `resolve_split_ratios()`: normalises the train/val/test ratios,
+- `to_dict()` / `from_dict()`: serialisation for worker processes.
 
 Sub-configs are dataclasses: `AugMethodConfig` (with `ExtremeResizeConfig` overriding the
 pixel-height semantics), `TextDecorationConfig`, `TextEffectConfig`, and `NormalizerConfig`.
@@ -115,7 +115,7 @@ Generation is chunked across worker processes:
 
 Config objects are passed to workers via `GenerationConfig.to_dict()` / `from_dict()`. `from_dict`
 silently ignores unknown keys, so workers started with an older config dict do not crash when new
-keys are added — a deliberate forward-compatibility choice worth preserving when you add fields.
+keys are added. That is deliberate, and worth preserving when you add fields.
 
 `_AUTO_PARALLEL_MIN_SAMPLES = 2048` in both `augmentation.py` and `parallel.py` gates the automatic
 switch to multiprocessing.
@@ -124,26 +124,26 @@ switch to multiprocessing.
 
 `ImageRenderer` is the most intricate module. Things worth knowing before changing it:
 
-- **Font face caching** — `_font_face_cache` (Rust `FontFace` per font path) and
+- **Font face caching**: `_font_face_cache` (Rust `FontFace` per font path) and
   `FontManager._dynamic_font_cache` (bounded LRU, 1024 entries) exist to avoid pinning every
   FreeType face a long run touches. See the memory-fix history in
   [CHANGELOG.md](https://github.com/LazyGreed/khocr-gen/blob/main/CHANGELOG.md).
-- **`_RGB_PREFERRED_METHODS`** — the renderer may hand RGB arrays to augmentation methods; that set
+- **`_RGB_PREFERRED_METHODS`**: the renderer may hand RGB arrays to augmentation methods; that set
   is why `gradient_illumination` is excluded from Rust acceleration.
-- **Effects are single-select** — `TEXT_EFFECT_NAMES` is ordered, and sampling walks it taking the
+- **Effects are single-select**: `TEXT_EFFECT_NAMES` is ordered, and sampling walks it taking the
   first probability hit.
-- **`DecorStyle`** — the sampled per-line decoration state (active flags, color, sub/superscript
+- **`DecorStyle`**: the sampled per-line decoration state (active flags, color, sub/superscript
   targets) carried from sampling into drawing.
 
 ## Rust boundary
 
 `_rust_accel.py` is the only place Python touches native code. It exposes:
 
-- `HAS_RUST_ACCEL` — the import-time capability flag,
-- `FontFace` — cmap glyph lookup,
-- `split_text_spans` — mixed-script span splitting,
-- `estimate_bg`, `image_is_blank`, `write_image` — utilities,
-- `RustFontManager` — built but unused by the pipeline,
+- `HAS_RUST_ACCEL`: the import-time capability flag,
+- `FontFace`: cmap glyph lookup,
+- `split_text_spans`: mixed-script span splitting,
+- `estimate_bg`, `image_is_blank`, `write_image`: utilities,
+- `RustFontManager`: built but unused by the pipeline,
 - the accelerated `apply_*` augmentation kernels.
 
 Everything is optional: `augmentation.AUG_METHODS` swaps in native implementations when the flag is
@@ -152,7 +152,7 @@ Details in **[Rust Acceleration](Rust-Acceleration)**.
 
 ## Testing
 
-`tests/` holds roughly 364 tests across 18 files, mirroring the module layout —
+`tests/` holds roughly 364 tests across 18 files, mirroring the module layout:
 `test_rendering.py`, `test_augmentation.py`, `test_config.py`, `test_line_height.py`,
 `test_text_decoration.py`, `test_text_effects.py`, `test_parallel.py`, `test_lmdb_pack.py`,
 `test_combine.py`, and others.
@@ -162,6 +162,6 @@ Coverage is configured in `pyproject.toml` with branch coverage over `src/khocr_
 
 ## See also
 
-- **[Development](Development)** — build, lint, test, release
-- **[Rust Acceleration](Rust-Acceleration)** — the native extension in depth
-- **[Output and Storage](Output-and-Storage)** — the files this pipeline produces
+- **[Development](Development)**: build, lint, test, release
+- **[Rust Acceleration](Rust-Acceleration)**: the native extension in depth
+- **[Output and Storage](Output-and-Storage)**: the files this pipeline produces

@@ -36,7 +36,7 @@ data/
 | `--color-mode {1,3}` | 1 | 1 = grayscale, 3 = RGB |
 
 Variable heights (from `--line-height-mode`) mean image dimensions are **not** fixed across a
-dataset. Any downstream loader must handle that — see **[Variable Line Height](Variable-Line-Height)**.
+dataset. Any downstream loader must handle that. See **[Variable Line Height](Variable-Line-Height)**.
 
 ## `labels.txt`
 
@@ -50,7 +50,7 @@ images/000003.png	ស្វាគមន៍ Welcome
 
 - Path is **relative to the split directory**.
 - Delimiter is a single **tab**; any tab inside a label is replaced before writing.
-- The format does not change with variable line height or decorations — image dimensions carry that
+- The format does not change with variable line height or decorations. Image dimensions carry that
   information, not the label file.
 
 ## `vocab.json`
@@ -76,7 +76,7 @@ actually generated.
 
 ## `metadata.jsonl`
 
-Written when `--record-metadata` is set — one JSON object per image, in generation order:
+Written when `--record-metadata` is set, one JSON object per image, in generation order:
 
 ```json
 {"image": "000001.png", "text": "សួស្តី", "width": 384, "height": 64, "font": "KhmerOS.ttf", "font_size": 42, "decorations": ["bold"]}
@@ -98,7 +98,7 @@ and reproducing individual samples.
 
 Written when one or more samples fail to render (for example, no font in the pool covers a line
 within `--retry-limit`). Check it after a run if your expected image count does not match the actual
-count — a silent shortfall usually means fonts, not the corpus.
+count. A silent shortfall usually means fonts, not the corpus.
 
 ## Storage modes
 
@@ -184,7 +184,7 @@ khocr-gen combine data_run1 data_run2 data_run3 --output data_merged
 ```
 
 Each input may have `train/` and/or `val/` subdirectories, and each split may be raw
-(`labels.txt` + `images/`) or LMDB (`lmdb/`) — they can be mixed freely. **The merged output is
+(`labels.txt` + `images/`) or LMDB (`lmdb/`). They can be mixed freely. **The merged output is
 always LMDB.** A merged `vocab.json` covering every character across all merged splits is written to
 the output directory.
 
@@ -199,7 +199,7 @@ the output directory.
 | `--skip-vocab` | off | Do not write a merged vocabulary |
 | `--verbose` | off | Print merge and packing progress |
 
-`combine` accepts `--config` and auto-detects `configs/combine.yml` — see
+`combine` accepts `--config` and auto-detects `configs/combine.yml`. See
 **[Configuration](Configuration)**.
 
 ## Workers and timeouts

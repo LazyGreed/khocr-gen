@@ -9,7 +9,7 @@
 | Rust toolchain (`cargo`, `rustc`) | edition 2021 | building the optional `_rust_accel` extension |
 | `uv` | any recent | recommended for development |
 
-No GPU is required — generation is CPU-bound image work.
+No GPU is required. Generation is CPU-bound image work.
 
 ## From PyPI
 
@@ -74,7 +74,7 @@ Either:
 
 | Extra | Adds |
 |-------|------|
-| `rust` | `khocr-gen-core` only — the native acceleration extension |
+| `rust` | `khocr-gen-core` only: the native acceleration extension |
 | `dev` | `pytest`, `pytest-cov`, `ruff`, `ty`, plus `khocr-gen-core` |
 
 ```bash
@@ -104,6 +104,6 @@ uv sync --extra dev       # full development environment
 
 ## Next steps
 
-- **[Getting Started](Getting-Started)** — first dataset end to end
-- **[Rust Acceleration](Rust-Acceleration)** — building and iterating on `rust/`
-- **[Development](Development)** — running the test suite and CI checks locally
+- **[Getting Started](Getting-Started)**: first dataset end to end
+- **[Rust Acceleration](Rust-Acceleration)**: building and iterating on `rust/`
+- **[Development](Development)**: running the test suite and CI checks locally

@@ -82,9 +82,9 @@ exists; `--text-deco-color-prob` requires `--color-mode 3`.
 
 ### Text effects
 
-Canva-style per-line effects, also sampled on the clean canvas before augmentation. They are
-**mutually exclusive with each other** — each probability is rolled independently in a fixed
-order and the first hit wins — but combine freely with the `--text-deco-*` decorations above.
+Canva-style per-line effects, also sampled on the clean canvas before augmentation. They're
+**mutually exclusive**: each probability is rolled independently in a fixed order and the first hit
+wins. But they combine freely with the `--text-deco-*` decorations above.
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -122,7 +122,7 @@ Full details and examples: **[Text Decorations and Effects](Text-Decorations-and
 | `--record-metadata` | flag | false | Write a `metadata.jsonl` sidecar (`image`/`text`/`width`/`height`/`font`/`font_size`) per split |
 
 Every image is rendered on a clean canvas at its natural size and then uniformly **resized**
-(never cropped) to the sampled target height, so glyphs — including Khmer diacritics — are never
+(never cropped) to the sampled target height, so glyphs (including Khmer diacritics) are never
 clipped. `labels.txt` is unaffected: variable height is encoded entirely in the image dimensions.
 
 ```bash
@@ -267,9 +267,9 @@ exactly that intensity rather than a value sampled at random from the range.
 
 Each individual `text_deco_*` (bold, italic, underline, color, subscript, superscript) and
 `text_effect_*` (background, echo, glitch, glow, hollow, huge, neon, outline, pixel, shadow, tiny,
-transparent) probability is verifiable the same way, one at a time — pass e.g.
-`--method text_deco_bold` or `--method text_effect_glow` — pinning just that probability to the
-fixed intensity (all others at 0) and re-rendering, rather than applying an augmentation function
+transparent) probability is verifiable the same way, one at a time. Pass e.g.
+`--method text_deco_bold` or `--method text_effect_glow`, which pins just that probability to the
+fixed intensity (all others at 0) and re-renders, rather than applying an augmentation function
 to a clean canvas.
 
 ```bash
