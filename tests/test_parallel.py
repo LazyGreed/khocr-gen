@@ -23,7 +23,7 @@ _HAS_REAL_FONTS = (_FONTS_DIR / "khmer").is_dir() and any((_FONTS_DIR / "khmer")
 
 class TestResolveWorkerCount:
     def test_negative_workers_treated_as_auto(self):
-        """Negative workers gets clamped to 0 (auto), which may return cpu_count."""
+        """Negative workers get clamped to 0 (auto), which may return cpu_count."""
         result = resolve_worker_count(-1, 10_000)
         # With enough samples, auto resolves to cpu_count
         assert result >= 1

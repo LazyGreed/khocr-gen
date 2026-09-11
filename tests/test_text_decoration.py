@@ -244,7 +244,7 @@ class TestDecoratedCleanRender:
         cfg = GenerationConfig(text_deco=TextDecorationConfig(underline_prob=1.0))
         fm = FontManager(fonts_dir=str(_FONTS_DIR))
         r = ImageRenderer(fm, cfg)
-        # Simulate a decoration failure: _render_decorated returns None.
+        # Force the decorated path to fail so the clean fallback runs.
         monkeypatch.setattr(r, "_render_decorated", lambda *a, **k: None)
         random.seed(0)
         result = r._render_clean("Hello", False, None, 3)
