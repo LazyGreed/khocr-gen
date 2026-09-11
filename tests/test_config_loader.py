@@ -107,7 +107,6 @@ class TestApplyConfigDefaults:
         config = {"height": 96}
         apply_config_defaults(parser, config)
 
-        # CLI flag overrides
         ns = parser.parse_args(["--height", "128"])
         assert ns.height == 128
 

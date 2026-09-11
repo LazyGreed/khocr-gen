@@ -93,7 +93,6 @@ class TestResolveChunkSize:
         result = resolve_chunk_size(500, 16)
         # target = 500 / (16*32) = 0
         # clamp: max(16, min(256, max(64, 0))) = 64
-        # Actually target is 0, so max(64, 0) = 64, min(256, 64) = 64
         assert result >= 16
 
     def test_maximum_256(self):

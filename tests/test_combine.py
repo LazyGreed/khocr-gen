@@ -50,12 +50,10 @@ class TestDetectSplitFormat:
         assert _detect_split_format(split_dir) is None
 
     def test_raw_wins_over_lmdb_when_no_mdb(self, tmp_path):
-        """labels.txt exists but no data.mdb."""
         split_dir = tmp_path / "train"
         lmdb_dir = split_dir / "lmdb"
         lmdb_dir.mkdir(parents=True)
         (split_dir / "labels.txt").touch()
-        # No data.mdb — should be "raw"
         assert _detect_split_format(split_dir) == "raw"
 
 

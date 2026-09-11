@@ -1,4 +1,4 @@
-"""Tests for the normalizer module — wraps khmernormalizer."""
+"""Tests for the normalizer module, which wraps khmernormalizer."""
 
 from __future__ import annotations
 
@@ -89,7 +89,6 @@ class TestNormalize:
     def test_normalize_english(self):
         cfg = NormalizerConfig()
         result = normalize("Hello World!", cfg)
-        # Should be at least the same length (normalization may change Unicode forms)
         assert len(result) > 0
 
     def test_normalize_khmer(self):

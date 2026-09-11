@@ -42,7 +42,6 @@ class TestAugMethodConfig:
             assert 0.0 <= v <= 1.0
 
     def test_to_dict_via_generation_config(self):
-        """AugMethodConfig is serialized via GenerationConfig.to_dict."""
         cfg = AugMethodConfig(prob=0.3, min=0.1, max=0.9)
         assert cfg.prob == 0.3
         assert cfg.min == 0.1
@@ -63,10 +62,8 @@ class TestGenerationConfigDefaults:
         assert cfg.retry_limit == 10
 
     def test_some_aug_methods_enabled_by_default(self):
-        """Some augmentation methods have sensible non-zero defaults."""
         cfg = GenerationConfig()
         enabled = cfg.enabled_aug_methods()
-        # Several offline methods come enabled by default
         assert len(enabled) > 0
         # Remaining methods (currently 13) start disabled by default
         remaining = {
@@ -96,13 +93,11 @@ class TestGenerationConfigDefaults:
 
     def test_enabled_aug_methods_nonempty_by_default(self):
         cfg = GenerationConfig()
-        # Several offline aug methods come enabled by default
         assert len(cfg.enabled_aug_methods()) > 0
 
     def test_enabled_aug_methods_with_explicit_sauvola(self):
         cfg = GenerationConfig(sauvola=AugMethodConfig(prob=0.5, min=0.0, max=1.0))
         enabled = cfg.enabled_aug_methods()
-        # sauvola should be among the enabled methods
         enabled_names = [name for name, _ in enabled]
         assert "sauvola" in enabled_names
 
@@ -296,8 +291,6 @@ class TestGenerationConfigAddArgs:
 
 
 class TestAugMethodConfigDictInit:
-    """Test that GenerationConfig can be constructed with AugMethodConfig objects."""
-
     def test_constructor_init(self):
         cfg = GenerationConfig(
             sauvola=AugMethodConfig(prob=0.2, min=0.1, max=0.5),
@@ -324,8 +317,6 @@ class TestAugMethodConfigDictInit:
 
 
 class TestSplitRatioResolution:
-    """Test resolution of train/val/test split ratios based on user-specified rules."""
-
     def test_default_ratios_when_neither_specified(self):
         cfg = GenerationConfig()
         train, val, test = cfg.resolve_split_ratios()
@@ -388,8 +379,6 @@ class TestSplitRatioResolution:
 
 
 class TestBgColorMode:
-    """Test background color mode configuration and CLI parsing."""
-
     def test_default_bg_color_mode(self):
         cfg = GenerationConfig()
         assert cfg.bg_color_mode == "random"

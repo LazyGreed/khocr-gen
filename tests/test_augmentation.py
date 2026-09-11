@@ -37,7 +37,6 @@ from khocr_gen.augmentation import (
 def _make_test_image(h: int = 48, w: int = 200, text_val: int = 0, bg_val: int = 255) -> np.ndarray:
     """Create a simple grayscale test image with text-like dark pixels."""
     img = np.full((h, w), bg_val, dtype=np.uint8)
-    # Draw a horizontal stripe of "text"
     img[h // 4 : 3 * h // 4, w // 4 : 3 * w // 4] = text_val
     return img
 
@@ -136,7 +135,6 @@ class TestSaltPepper:
     def test_zero_intensity(self):
         img = _make_test_image()
         result = apply_salt_pepper(img, 0.0)
-        # At zero intensity, very few pixels should change
         assert result is not None
 
 

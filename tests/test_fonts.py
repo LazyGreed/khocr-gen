@@ -19,7 +19,6 @@ class TestFontManagerInit:
         monkeypatch.chdir(tmp_path)
         fonts_dir = tmp_path / "fonts"
 
-        # Should not crash; should create khmer/ and english/ subdirs
         fm = FontManager(fonts_dir=str(fonts_dir))
         assert (fonts_dir / "khmer").exists()
         assert (fonts_dir / "english").exists()
@@ -63,19 +62,15 @@ class TestFontManagerTextHasKhmer:
     def test_cache_works(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         fm = FontManager(fonts_dir=str(tmp_path / "fonts"))
-        # First call
         result1 = fm._text_has_khmer("test")
-        # Second call should use cache
         result2 = fm._text_has_khmer("test")
         assert result1 == result2
-        # Cache entry exists
         assert "test" in fm._text_has_khmer_cache
 
     def test_cache_limits(self, tmp_path, monkeypatch):
         """Cache should not grow unbounded."""
         monkeypatch.chdir(tmp_path)
         fm = FontManager(fonts_dir=str(tmp_path / "fonts"))
-        # Pre-fill the cache
         fm._text_has_khmer_cache = {str(i): False for i in range(100_001)}
         fm._text_has_khmer("overflow")
         assert len(fm._text_has_khmer_cache) <= 1
