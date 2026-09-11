@@ -67,7 +67,7 @@ khocr-gen generate --corpus corpus/corpus.txt --storage both
 | `--text-effect-tiny-prob F` | float | 0 | Probability of undersized text relative to the canvas |
 | `--text-effect-transparent-prob F` | float | 0 | Probability of a partially see-through fill |
 
-Text effects are mutually exclusive with each other (Canva-style effects panel:
+Text effects are mutually exclusive (Canva-style effects panel:
 one effect at a time, first probability hit wins) but combine freely with the
 `--text-deco-*` decorations above.
 
@@ -221,9 +221,9 @@ the range.
 Each individual `text_deco_*` (bold, italic, underline, color, subscript,
 superscript) and `text_effect_*` (background, echo, glitch, glow, hollow, huge,
 neon, outline, pixel, shadow, tiny, transparent) probability is also verifiable
-the same way, one at a time — pass e.g. `--method text_deco_bold` or `--method
-text_effect_glow` — pinning just that probability to the fixed intensity (all
-others at 0) and re-rendering, rather than applying an augmentation function to
+the same way, one at a time. Pass e.g. `--method text_deco_bold` or `--method
+text_effect_glow`, which pins just that probability to the fixed intensity (all
+others at 0) and re-renders, rather than applying an augmentation function to
 a clean canvas.
 
 ```bash
@@ -311,8 +311,8 @@ Merge multiple datasets into one (n-way merge).
 khocr-gen combine DATASET [DATASET ...] [OPTIONS]
 ```
 
-Each input dataset may have `train/` and/or `val/` subdirectories.
-Each split can be raw (`labels.txt` + `images/`) or LMDB (`lmdb/`).
+Each input dataset may have `train/` and/or `val/` subdirectories, and each split
+can be raw (`labels.txt` + `images/`) or LMDB (`lmdb/`).
 The merged output is always LMDB. A merged `vocab.json`, covering every
 character across all merged splits, is written to the output directory too.
 

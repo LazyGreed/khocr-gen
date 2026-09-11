@@ -228,34 +228,34 @@ probability in `[0, 1]`; default `0` disables that decoration. Decorations can
 combine. Bold/italic require a matching variant font and are skipped otherwise.
 Random color requires `color-mode: 3`.
 
-- `text-deco-color-prob` — single random text color for the whole line (RGB only)
-- `text-deco-underline-prob` — underline the whole line
-- `text-deco-subscript-prob` — lower 1–2 random ASCII chars
-- `text-deco-superscript-prob` — raise 1–2 random ASCII chars
-- `text-deco-italic-prob` — italic via a real italic/oblique variant font
-- `text-deco-bold-prob` — bold via a real bold variant font
+- `text-deco-color-prob`: single random text color for the whole line (RGB only)
+- `text-deco-underline-prob`: underline the whole line
+- `text-deco-subscript-prob`: lower 1–2 random ASCII chars
+- `text-deco-superscript-prob`: raise 1–2 random ASCII chars
+- `text-deco-italic-prob`: italic via a real italic/oblique variant font
+- `text-deco-bold-prob`: bold via a real bold variant font
 
 ## Text effects
 
 Canva-style per-line effects applied at render time (before augmentation), on top of
 the same clean canvas as text decorations. Unlike decorations, effects are
-**mutually exclusive** with each other: each probability is rolled independently in
+**mutually exclusive**: each probability is rolled independently in
 a fixed order and the first hit wins, so at most one effect applies per line. They
 combine freely with `text-deco-*`. Default `0` disables an effect. Every effect keeps
-the underlying glyph shapes intact — the rendered text is still the ground-truth label.
+the underlying glyph shapes intact. The rendered text is still the ground-truth label.
 
-- `text-effect-background-prob` — highlight box behind the line
-- `text-effect-echo-prob` — faint offset duplicate (echo/ghost) copies
-- `text-effect-glitch-prob` — small offset colour-split copies
-- `text-effect-glow-prob` — soft blurred halo behind the text
-- `text-effect-hollow-prob` — outline-only glyphs, background-colour interior
-- `text-effect-huge-prob` — oversized text relative to the canvas
-- `text-effect-neon-prob` — bright saturated fill with a neon-sign glow
-- `text-effect-outline-prob` — solid fill with a contrasting stroke
-- `text-effect-pixel-prob` — blocky/pixelated glyph edges
-- `text-effect-shadow-prob` — offset blurred drop shadow
-- `text-effect-tiny-prob` — undersized text relative to the canvas
-- `text-effect-transparent-prob` — partially see-through fill
+- `text-effect-background-prob`: highlight box behind the line
+- `text-effect-echo-prob`: faint offset duplicate (echo/ghost) copies
+- `text-effect-glitch-prob`: small offset colour-split copies
+- `text-effect-glow-prob`: soft blurred halo behind the text
+- `text-effect-hollow-prob`: outline-only glyphs, background-colour interior
+- `text-effect-huge-prob`: oversized text relative to the canvas
+- `text-effect-neon-prob`: bright saturated fill with a neon-sign glow
+- `text-effect-outline-prob`: solid fill with a contrasting stroke
+- `text-effect-pixel-prob`: blocky/pixelated glyph edges
+- `text-effect-shadow-prob`: offset blurred drop shadow
+- `text-effect-tiny-prob`: undersized text relative to the canvas
+- `text-effect-transparent-prob`: partially see-through fill
 
 ## Augmentation Method Fields
 
@@ -269,14 +269,14 @@ name with underscores written as hyphens (`geo_warp` → `geo-warp-prob`):
 | `<method>-min` | float | [0, 1] | Minimum intensity (normalized; clamped to ≥ 0) |
 | `<method>-max` | float | [0, 1] | Maximum intensity (clamped to ≤ 1; ≥ min) |
 
-Nested mappings are **not** read — `sauvola: {prob: 0.2}` is dropped with
+Nested mappings are **not** read: `sauvola: {prob: 0.2}` is dropped with
 `Config key 'sauvola' is a nested mapping; only flat keys are supported, skipping.` on stderr and
 the default is kept. (A key matching no flag warns separately with
-`[config] WARNING: Unrecognized keys …` — that one usually means a typo.)
+`[config] WARNING: Unrecognized keys …`, which usually means a typo.)
 
 **Exception:** `extreme_resize`'s `min`/`max` are absolute target heights in *pixels*
 (default `8`/`1920`, clamped to `min ≥ 1` and `max ≥ min`), not normalized `[0, 1]`
-values — see [AUGMENTATION.md](AUGMENTATION.md#extreme_resize-extreme-source-resolution-simulation).
+values. See [AUGMENTATION.md](AUGMENTATION.md#extreme_resize-extreme-source-resolution-simulation).
 
 **How intensities work:** The actual intensity for a given image is sampled uniformly from `[min, max]`.
 The method maps this normalized value to physical units (pixel displacements, kernel sizes, noise sigmas, etc.).

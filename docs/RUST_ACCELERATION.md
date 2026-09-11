@@ -4,7 +4,7 @@
 paths in the generation pipeline: pixel-level augmentation and font glyph checking. It is
 built with [PyO3](https://pyo3.rs)/[maturin](https://www.maturin.rs) from the `rust/` crate
 (package name `khocr-gen-core`) and installed as a regular editable dependency of the
-`khocr-gen` Python project — no separate build step is required.
+`khocr-gen` Python project, so no separate build step is required.
 
 Every accelerated code path has a pure-Python fallback, so the project works with or
 without a Rust toolchain. Acceleration is detected once at import time via
@@ -18,7 +18,7 @@ uv sync --extra dev
 ```
 
 Building `khocr-gen-core` requires a Rust toolchain (`cargo`/`rustc`, edition 2021) on
-`PATH`. If it's missing, `uv sync` will fail on that package — installing Rust
+`PATH`. If it's missing, `uv sync` will fail on that package; installing Rust
 (https://rustup.rs) resolves it. There is currently no pip/PyPI-only path that skips
 compilation; if you need a pure-Python-only environment, remove the `khocr-gen-core`
 line from the `dev`/`rust` extras in `pyproject.toml` before syncing.
@@ -38,7 +38,7 @@ VIRTUAL_ENV=/path/to/khocr-gen/.venv uv run --with maturin maturin develop --rel
 
 **Do not** `cd rust && uv run --with maturin maturin develop`. `rust/pyproject.toml`
 declares its own (maturin) project, so a bare `uv run` from inside `rust/` treats it as
-a separate project root and creates a stray `rust/.venv` — the extension gets installed
+a separate project root and creates a stray `rust/.venv`. The extension gets installed
 there instead of the real project environment, and it silently looks like the build
 "isn't taking effect." Always pin `VIRTUAL_ENV` to the top-level `.venv` (or run from the
 repo root with `--manifest-path`) when building manually.

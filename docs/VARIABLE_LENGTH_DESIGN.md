@@ -27,7 +27,7 @@ min_line_height: 32
 max_line_height: 96
 ```
 
-**Recommended modes:**
+Recommended modes:
 
 - fixed: current behavior; all generated line images use the existing configured height.
 - variable: each generated line image samples a height from a configured range.
@@ -39,20 +39,20 @@ Keep `fixed` the default for backward compatibility.
 
 When `line_height_mode=variable`, each generated sample should choose a line/canvas height from a bounded range.
 
-**Example behavior:**
+Example behavior:
 
 sample 1 -> height 48
 sample 2 -> height 64
 sample 3 -> height 40
 sample 4 -> height 88
 
-**Requirements:**
+Requirements:
 
 - The sampled height must be between `min_line_height` and `max_line_height`.
 - Heights should probably be integer pixels.
 - Optionally align to a multiple, e.g. `--line-height-step 8`, to avoid awkward shapes and improve batching.
 
-**Example:**
+Example:
 
 ```yaml
 min_line_height: 32
@@ -60,7 +60,7 @@ max_line_height: 96
 line_height_step: 8
 ```
 
-**Then possible heights are:**
+Then possible heights are:
 
 32, 40, 48, 56, 64, 72, 80, 88, 96
 
@@ -90,7 +90,7 @@ min_vertical_padding_ratio: 0.04
 max_vertical_padding_ratio: 0.18
 ```
 
-**Practical interpretation:**
+Practical interpretation:
 
 - Generate a 64px-tall line image.
 - Pick a font size that fits into roughly 65–90% of that height.
@@ -103,7 +103,7 @@ This is better than simply resizing a fixed height render up and down.
 
 The existing `labels.txt` should remain valid.
 
-**Current likely format:**
+Current likely format:
 
 ```text
 path/to/image.png<TAB>text label
@@ -152,14 +152,14 @@ The generator must avoid cutting off:
 - stacked diacritics
 - punctuation near boundaries
 
-**Functional checks:**
+Functional checks:
 
 - compute text bounding box before final crop/paste when possible
 - include a minimum vertical safety margin
 - avoid aggressive tight cropping unless explicitly enabled
 - optionally reject and retry samples where rendered glyphs exceed the canvas
 
-**Example requirement:**
+Example requirement:
 
 If rendered text bbox exceeds the target canvas height, retry with smaller font size or larger sampled height.
 
@@ -181,7 +181,7 @@ Avoid coupling this feature to a larger “variable width” redesign unless nee
 
 If generate `--pack-lmdb` is used, the packed data should preserve image bytes as generated.
 
-**Requirements:**
+Requirements:
 
 - LMDB writer should not assume fixed dimensions.
 - LMDB reader/training dataset should decode and normalize images as usual.
@@ -193,14 +193,14 @@ If the current LMDB path assumes fixed shape somewhere, that would need to be co
 
 `khocr-gen verify` or generation logs should make height variation visible.
 
-**Useful outputs:**
+Useful outputs:
 
 - min/max/mean generated image height
 - histogram of sampled heights
 - count of rejected/retried samples due to clipping
 - example render grid containing multiple heights
 
-**Example log:**
+Example log:
 
 Generated 10000 train samples
 Line height mode: variable
@@ -214,7 +214,7 @@ Rejected for clipping: 42
 
 Existing commands should behave the same unless the new option is enabled.
 
-**Required:**
+Required:
 
 `khocr-gen generate`
 
@@ -251,25 +251,25 @@ with CLI overriding YAML.
 
 Variable height generation should not significantly slow down generation.
 
-**Targets:**
+Targets:
 
 - avoid expensive per-sample layout retries where possible
 - cap retry count for clipping avoidance
 - use efficient text bounding-box measurement
 - avoid opening/reloading font files per sample if the current generator caches them
 
-**Acceptable behavior:**
+Acceptable behavior:
 
 If a sample cannot be rendered without clipping after N retries, fall back to a safe height/font size combination or skip with a counted warning.
 
 5. **Dataset Quality**
 
-Generated variation should be realistic, not merely random.
+Cranking up the randomness isn't the same as realism. The generated heights should match what a real OCR crop looks like.
 
-**Requirements:**
+Requirements:
 
 - avoid extremely tiny text unless explicitly configured
-- avoid mostly empty tall canvases
+- don't leave mostly empty tall canvases
 - avoid cramped canvases that clip marks
 - keep sampled distribution controllable
 
@@ -279,7 +279,7 @@ A good default distribution is probably not uniform over all pixel heights. Bett
 - weighted sampling around the current default height
 - normal/triangular distribution clipped to min/max
 
-**Example:**
+Example:
 
 ```yaml
 line_height_distribution: triangular
@@ -295,20 +295,20 @@ This keeps most samples near normal while still producing larger/smaller lines.
 
 Invalid configurations should fail early with actionable errors.
 
-**Examples:**
+Examples:
 
 --min-line-height must be > 0
 --max-line-height must be >= --min-line-height
 --line-height-step must be > 0
 --line-height-mode fixed cannot be used with min/max line height unless explicitly allowed
 
-For project consistency, these should probably use typed project errors where appropriate, then surface clean CLI messages.
+For project consistency, these should use typed project errors where that fits, then surface clean CLI messages.
 
 7. **Testability**
 
 The feature should be covered with targeted tests.
 
-**Suggested test cases:**
+Suggested test cases:
 
 - default generation remains fixed-height
 - variable mode produces more than one height with a fixed seed
