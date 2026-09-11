@@ -9,7 +9,7 @@ Synthetic OCR training data generator for mixed Khmer/English text.
 - **Mixed-script rendering:** per-span font selection for Khmer + English
 - **Variable line height:** sample per-image canvas height (fixed/variable/bucketed), with optional proportional font scaling and random padding, no glyph clipping
 - **Text decorations:** per-line color, underline, subscript/superscript, italic, and bold sampled at render time (can combine, isolated from augmentations)
-- **Text effects:** Canva-style per-line effects — huge/tiny sizing, transparency, drop shadow, glow, outline, hollow, echo, background highlight, neon, glitch, and pixel — mutually exclusive with each other, combinable with text decorations
+- **Text effects:** Canva-style per-line effects (huge/tiny sizing, transparency, drop shadow, glow, outline, hollow, echo, background highlight, neon, glitch, and pixel), mutually exclusive with each other, combinable with text decorations
 - **26 augmentation methods:** unified registry covering scanner/camera degradations and training-time transforms
 - **Rust acceleration:** 21/26 augmentation methods plus font glyph checking run through a native PyO3 extension, with automatic pure-Python fallback
 - **Isolated augmentation:** one effect per image, weighted by configurable probabilities
@@ -158,8 +158,8 @@ khocr-gen generate --text-deco-color-prob 0.3 --text-deco-underline-prob 0.2 \
 
 Canva-style per-line effects, sampled at render time alongside decorations
 (before augmentation). Unlike decorations, effects are mutually exclusive with
-each other — each probability is rolled independently in a fixed order and the
-first hit wins — but combine freely with `--text-deco-*`. Every effect keeps
+each other (each probability is rolled independently in a fixed order and the
+first hit wins), but combine freely with `--text-deco-*`. Every effect keeps
 the underlying glyph shapes intact, since the rendered text is still the
 ground-truth OCR label.
 
@@ -189,7 +189,7 @@ how the native extension is built/installed, and how to iterate on the `rust/` c
 
 ## Documentation
 
-The **[wiki](https://github.com/LazyGreed/khocr-gen/wiki)** is the complete guide — installation,
+The **[wiki](https://github.com/LazyGreed/khocr-gen/wiki)** is the complete guide: installation,
 a first end-to-end run, every CLI flag, all configuration keys, fonts, variable line height,
 decorations and effects, the augmentation catalog, output formats, architecture, and
 troubleshooting. Start at
@@ -197,7 +197,7 @@ troubleshooting. Start at
 lists every page.
 
 The wiki source lives in [`wiki/`](wiki/) and is published by
-`./scripts/publish_wiki.sh` — see [`wiki/README.md`](wiki/README.md). The long-form reference guides
+`./scripts/publish_wiki.sh`. See [`wiki/README.md`](wiki/README.md). The long-form reference guides
 under [`docs/`](docs/) still ship with the repository and remain the in-repo reference for their
 topics; the wiki is the user-facing guide and is not generated from them.
 
