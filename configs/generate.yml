@@ -26,10 +26,10 @@ record-metadata: true                 # write metadata.jsonl per split
 
 # Text decoration (0 = disabled, each a probability in [0, 1])
 text-deco-color-prob: 0.5             # random line color (RGB only; needs color-mode: 3)
-text-deco-underline-prob: 0.2         # underline the whole line
+text-deco-underline-prob: 0.0         # underline the whole line
 text-deco-subscript-prob: 0.0         # lower 1-2 random ASCII chars
 text-deco-superscript-prob: 0.0       # raise 1-2 random ASCII chars
-text-deco-italic-prob: 0.3            # italic via real italic/oblique variant font
+text-deco-italic-prob: 0.4            # italic via real italic/oblique variant font
 text-deco-bold-prob: 0.0              # bold via real bold variant font
 
 # Text effects
