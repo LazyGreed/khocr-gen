@@ -7,39 +7,39 @@ generation pipeline.
 
 ```text
 khocr-gen/
-├── src/khocr_gen/        # the Python package (~7.6k lines)
-├── rust/                 # khocr-gen-core — the optional PyO3 extension
-├── configs/              # example YAML recipes (generate.yml, combine.yml)
-├── docs/                 # in-repo documentation (this wiki mirrors and extends it)
-├── tests/                # pytest suite (~364 tests)
+├── src/khocr_gen/        # Python package
+├── rust/                 # optional khocr-gen-core PyO3 extension
+├── configs/              # example YAML recipes
+├── docs/                 # in-repository references and archived proposals
+├── tests/                # pytest suite
 ├── typings/              # type stubs used by `ty`
-└── .github/workflows/    # ci.yml, publish.yml
+└── .github/workflows/    # CI and publishing workflows
 ```
 
 ## Module map
 
-| Module | Lines | Responsibility |
-|--------|-------|----------------|
-| `cli.py` | 208 | Top-level entrypoint, subcommand dispatch, config-default injection |
-| `config.py` | 1301 | `GenerationConfig` — the single source of truth for every generation parameter |
-| `config_loader.py` | 149 | YAML loading, key normalisation, key validation, default injection |
-| `rendering.py` | 1260 | `ImageRenderer` — text-to-image rendering, decorations, effects, mixed-font compositing |
-| `augmentation.py` | 1013 | The 26-method registry and their pure-Python/OpenCV implementations |
-| `data_generator.py` | 827 | `DatasetGenerator` — orchestration, splits, output files, vocab |
-| `verify.py` | 471 | `khocr-gen verify` — side-by-side MIN/MAX method renders |
-| `_rust_accel.py` | 296 | Rust extension loader and graceful fallback shim |
-| `corpus.py` | 279 | Corpus loading, filtering, counting, character frequencies |
-| `fonts.py` | 269 | `FontManager` — font discovery, pools, style tags, lazy face cache |
-| `parallel.py` | 226 | Worker-count/chunk-size resolution, multiprocessing context, chunk dispatch |
-| `normalizer.py` | 217 | Khmer normalization wrappers and `NormalizerConfig` |
-| `combine.py` / `combine_cmd.py` | 214 / 125 | n-way dataset merging |
-| `generate.py` | 210 | `khocr-gen generate` command wiring |
-| `viewer.py` | 172 | `khocr-gen view` — LMDB preview and extraction |
-| `lmdb_pack.py` | 132 | labels.txt + images → LMDB packing |
-| `line_height.py` | 127 | Height/font-scale/padding sampling and validation |
-| `errors.py` | 33 | `KhocrGenError` hierarchy |
-| `logging.py` | 25 | Logging setup |
-| `_pil_compat.py` | 25 | Pillow resampling-constant shims |
+| Module | Responsibility |
+|--------|----------------|
+| `cli.py` | Top-level entrypoint, subcommand dispatch, config-default injection |
+| `config.py` | `GenerationConfig` and the generation option surface |
+| `config_loader.py` | YAML loading, key normalisation, validation, and default injection |
+| `rendering.py` | `ImageRenderer`: text rendering, decorations, effects, mixed-font compositing |
+| `augmentation.py` | Augmentation registry and Python implementations |
+| `data_generator.py` | Dataset generation, splits, output files, and vocabulary |
+| `verify.py` | `khocr-gen verify` sample rendering |
+| `_rust_accel.py` | Native extension loader and Python fallback shim |
+| `corpus.py` | Corpus loading, filtering, counting, and character frequencies |
+| `fonts.py` | Font discovery, pools, style tags, and face cache |
+| `parallel.py` | Worker resolution, multiprocessing context, and chunk dispatch |
+| `normalizer.py` | Khmer normalization wrappers and `NormalizerConfig` |
+| `combine.py` / `combine_cmd.py` | Dataset merging |
+| `generate.py` | `khocr-gen generate` command wiring |
+| `viewer.py` | `khocr-gen view` LMDB preview and extraction |
+| `lmdb_pack.py` | Image and label packing into LMDB |
+| `line_height.py` | Height, font-scale, and padding sampling and validation |
+| `errors.py` | `KhocrGenError` hierarchy |
+| `logging.py` | Logging setup |
+| `_pil_compat.py` | Pillow resampling-constant shims |
 
 ### Configuration is centralised
 
@@ -152,10 +152,9 @@ Details in **[Rust Acceleration](Rust-Acceleration)**.
 
 ## Testing
 
-`tests/` holds roughly 364 tests across 18 files, mirroring the module layout:
-`test_rendering.py`, `test_augmentation.py`, `test_config.py`, `test_line_height.py`,
-`test_text_decoration.py`, `test_text_effects.py`, `test_parallel.py`, `test_lmdb_pack.py`,
-`test_combine.py`, and others.
+Tests under `tests/` are grouped by subsystem. Start with `test_config.py` and
+`test_config_loader.py` for option changes, `test_line_height.py` for height sampling, and
+`test_rendering.py` for rendering changes.
 
 Coverage is configured in `pyproject.toml` with branch coverage over `src/khocr_gen`, omitting
 `_rust_accel.py` (it is a thin loader over code tested on the Rust side).

@@ -2,8 +2,9 @@
 
 This directory is the **source of truth** for the [khocr-gen GitHub wiki](https://github.com/LazyGreed/khocr-gen/wiki).
 
-Each `.md` file here maps 1:1 to a wiki page (the filename, minus `.md`, is the page title; dashes
-become spaces). `_Sidebar.md` and `_Footer.md` are GitHub's special navigation pages.
+Every `.md` file except `README.md` maps to a wiki page (the filename, minus `.md`, is the page
+title; dashes become spaces). `_Sidebar.md` and `_Footer.md` are GitHub's special navigation pages.
+`README.md` documents this source directory and is not published.
 
 ## Pages
 
@@ -34,9 +35,9 @@ become spaces). `_Sidebar.md` and `_Footer.md` are GitHub's special navigation p
 ./scripts/publish_wiki.sh
 ```
 
-The script clones the wiki git repository, copies every `.md` from this directory, commits and
-pushes. Wiki content is **not** part of the main repository history. The main repo only holds this
-source copy.
+The script clones the wiki git repository, copies every publishable `.md` from this directory,
+commits and pushes. Wiki content is **not** part of the main repository history. The main repo only
+holds this source copy.
 
 Editing a page: change the file here, run the publish script, and keep the change in the same
 commit as any code change it documents (see
@@ -44,16 +45,16 @@ commit as any code change it documents (see
 
 ## Relationship to `docs/`
 
-The two documentation sets are independent and neither is generated from the other:
+The sets are maintained separately and neither is generated from the other:
 
 | | `docs/*.md` | `wiki/*.md` |
 |---|---|---|
-| Audience | contributors reading the repo | users reading the published wiki |
-| Shipped in | the repository and the source distribution | nothing; the wiki is a separate git repository |
-| Authoritative for | long-form design notes (e.g. `VARIABLE_LENGTH_DESIGN.md`) | the published wiki pages |
+| Audience | contributors using in-repository references | users following the published guides |
+| Shipped in | the repository and source distribution | a separate GitHub wiki repository |
+| Main content | CLI, configuration, augmentation and Rust references; archived proposals | installation, walkthroughs, and topic guides |
 
-When a change alters behaviour, setup, configuration or usage, update the affected file in **both**
-sets in the same commit if both cover the topic. Don't fix one and leave the other stale.
+Code and tests define current behavior. When both sets describe a changed behavior, setup, or
+option, update both. Keep archived proposals as historical records.
 
 ## Note on wiki bootstrap
 

@@ -1,5 +1,8 @@
 ## Variable Height Line Images
 
+> Archived proposal. For the implemented behavior, see the
+> [wiki guide](../../wiki/Variable-Line-Height.md) and the [CLI reference](../CLI_REFERENCE.md).
+
 ### Goal
 
 Allow the synthetic data generator to create line images whose rendered text/canvas height varies within controlled bounds, improving robustness to real OCR crops.

@@ -71,9 +71,10 @@ See [CLI_REFERENCE.md](https://github.com/LazyGreed/khocr-gen/blob/main/docs/CLI
 
 ## Documentation
 
-The [wiki](https://github.com/LazyGreed/khocr-gen/wiki) is the complete guide: getting started,
-every CLI flag, all configuration keys, fonts, variable line height, decorations and effects, the
-augmentation catalog, output formats, architecture, and troubleshooting.
+- [Getting Started](https://github.com/LazyGreed/khocr-gen/wiki/Getting-Started) for a first dataset.
+- [GitHub wiki](https://github.com/LazyGreed/khocr-gen/wiki) for usage guides and troubleshooting.
+- [In-repository references](https://github.com/LazyGreed/khocr-gen/blob/main/docs/README.md) for
+  the CLI, configuration, augmentation, and Rust extension.
 
 ## Acknowledgments
 

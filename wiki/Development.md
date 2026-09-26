@@ -54,7 +54,7 @@ Because `E501` is ignored, the formatter decides line breaks, not the linter. Ru
 
 ## Tests
 
-Roughly 364 tests live in `tests/`, mirroring the module layout:
+Tests live in `tests/` and are grouped by subsystem:
 
 ```text
 tests/
@@ -121,7 +121,7 @@ Release checklist:
 1. Move the `[Unreleased]` entries in [CHANGELOG.md](https://github.com/LazyGreed/khocr-gen/blob/main/CHANGELOG.md)
    under a new version heading with today's date.
 2. Bump `version` in `pyproject.toml`.
-3. Commit, then tag: `git tag v0.1.13 && git push origin v0.1.13`.
+3. Commit, then create and push a tag that matches the version, such as `vX.Y.Z`.
 4. Confirm the publish workflow ran and the version appears on
    [PyPI](https://pypi.org/project/khocr-gen/).
 
@@ -136,11 +136,12 @@ hand-built extension.
 
 ## Docs
 
-`README.md` is the PyPI-facing page for the repository; `README.pypi.md` is what PyPI renders as the
-package description. `docs/` holds the long-form guides, and this wiki mirrors and extends them.
+`README.md` is the repository landing page. `README.pypi.md`, selected by `pyproject.toml`, is the
+package description shown on PyPI. `docs/` contains in-repository references; this wiki is the
+separately published user guide. Keep pages aligned when both describe the same behavior or option.
 
-**Any change that affects behaviour, setup, configuration or usage must update the affected docs in
-the same change**: `README.md`, the relevant `docs/*.md`, and the matching wiki page here.
+Update the landing pages when the quick start or project overview changes. For behavior, setup, or
+configuration changes, update the references and wiki pages that cover them.
 
 ## See also
 
