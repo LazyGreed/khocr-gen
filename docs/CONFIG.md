@@ -215,6 +215,11 @@ morphological-max: 0.9
 anisotropic-dilation-prob: 0.0
 anisotropic-dilation-min: 0.1
 anisotropic-dilation-max: 0.9
+
+# Colored bloom needs color-mode: 3. Grayscale only lightens a fringe.
+luminous-halo-prob: 0.3
+luminous-halo-min: 0.1
+luminous-halo-max: 0.75
 ```
 
 > **Augmentation keys must be flat.** The YAML loader reads top-level keys only;

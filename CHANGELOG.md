@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-10-27
+
 ### Added
+- `luminous_halo` augmentation method: post-render near-white fill plus a soft colored
+  bloom (mostly green; cyan or magenta sometimes). The hue needs `color-mode: 3`;
+  grayscale keeps the dark core. Disabled by default (`prob: 0.0`); `configs/generate.yml`
+  enables it at `prob: 0.3` (min `0.1`, max `0.75`). Python-only. 27 methods in the
+  unified registry, 21 of them Rust-accelerated.
 - Tagged pushes now publish `khocr-gen` to PyPI automatically via a new GitHub Actions
   workflow (`.github/workflows/publish.yml`); the publish step is skipped gracefully
   when the `PYPI_TOKEN` secret isn't configured instead of failing the run.

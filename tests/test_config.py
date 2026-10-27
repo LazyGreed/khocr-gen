@@ -65,7 +65,7 @@ class TestGenerationConfigDefaults:
         cfg = GenerationConfig()
         enabled = cfg.enabled_aug_methods()
         assert len(enabled) > 0
-        # Remaining methods (currently 13) start disabled by default
+        # Remaining methods (currently 14) start disabled by default
         remaining = {
             "low_contrast_caption",
             "perspective",
@@ -80,6 +80,7 @@ class TestGenerationConfigDefaults:
             "gradient_illumination",
             "morphological",
             "anisotropic_dilation",
+            "luminous_halo",
         }
         for name, m in cfg.iter_aug_methods():
             if name in remaining:
@@ -88,8 +89,8 @@ class TestGenerationConfigDefaults:
     def test_iter_aug_methods_count(self):
         cfg = GenerationConfig()
         methods = list(cfg.iter_aug_methods())
-        # 26 methods in unified registry
-        assert len(methods) == 26
+        # 27 methods in unified registry
+        assert len(methods) == 27
 
     def test_enabled_aug_methods_nonempty_by_default(self):
         cfg = GenerationConfig()
@@ -176,6 +177,39 @@ class TestGenerationConfigAddArgs:
         args = parser.parse_args(["--copies", "10"])
         cfg = GenerationConfig.from_args(args)
         assert cfg.copies == 10
+
+    def test_luminous_halo_cli_and_yaml_roundtrip(self):
+        from khocr_gen.config_loader import apply_config_defaults
+
+        cfg = GenerationConfig()
+        assert cfg.luminous_halo.prob == 0.0
+        assert cfg.luminous_halo.min == 0.1
+        assert cfg.luminous_halo.max == 0.75
+
+        parser = argparse.ArgumentParser()
+        GenerationConfig.add_args(parser)
+        apply_config_defaults(
+            parser,
+            {
+                "luminous-halo-prob": 0.35,
+                "luminous-halo-min": 0.2,
+                "luminous-halo-max": 0.5,
+            },
+        )
+        from_yaml = GenerationConfig.from_args(parser.parse_args([]))
+        assert from_yaml.luminous_halo.prob == 0.35
+        assert from_yaml.luminous_halo.min == 0.2
+        assert from_yaml.luminous_halo.max == 0.5
+
+        overridden = GenerationConfig.from_args(parser.parse_args(["--luminous-halo-prob", "0.1"]))
+        assert overridden.luminous_halo.prob == 0.1
+        assert overridden.luminous_halo.min == 0.2
+        assert overridden.luminous_halo.max == 0.5
+
+        restored = GenerationConfig.from_dict(overridden.to_dict())
+        assert restored.luminous_halo.prob == 0.1
+        assert restored.luminous_halo.min == 0.2
+        assert restored.luminous_halo.max == 0.5
 
     def test_from_args_parses_aug_method(self):
         parser = argparse.ArgumentParser()

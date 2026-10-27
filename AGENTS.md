@@ -6,7 +6,6 @@ Python 3.12+ owns the pipeline. `rust/` provides optional PyO3 acceleration. Kee
 
 ## Read first
 
-- `HOUSE-STYLE.md` for prose and comments.
 - `src/khocr_gen/config.py` for the generation option surface.
 - `docs/` for reference behavior.
 - `wiki/` for user-facing documentation.

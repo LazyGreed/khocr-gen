@@ -136,7 +136,7 @@ the ground-truth OCR label.
 
 ### Which augmentation methods are *not* Rust-accelerated?
 
-`distortion`, `albu_noise`, `gradient_illumination`, `extreme_resize` and `low_contrast_caption`.
+`distortion`, `albu_noise`, `gradient_illumination`, `extreme_resize`, `low_contrast_caption`, and `luminous_halo`.
 See **[Rust Acceleration](Rust-Acceleration)** for the reasons.
 
 ### What does `extreme_resize`'s min/max mean?

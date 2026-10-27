@@ -8,12 +8,12 @@
 `khocr-gen` turns a plain text corpus into a labelled image dataset in one command. It renders
 each line of text onto a clean canvas with per-span font selection, samples variable canvas
 heights, decorations and Canva-style text effects, then applies exactly one augmentation from a
-26-method registry, optionally packing the result straight into LMDB for training.
+27-method registry, optionally packing the result straight into LMDB for training.
 
 ```text
 UTF-8 corpus                                                       training data
 text lines  ──▶  font selection ──▶  render ──▶  decorate/effect ──▶  1 augmentation  ──▶  images + labels.txt (+ LMDB)
-                  (Khmer/English)     (clean     (per line,          (26 methods,
+                  (Khmer/English)     (clean     (per line,          (27 methods,
                                        canvas)     optional)          isolated)
 ```
 
@@ -49,8 +49,8 @@ New here? Start with **[Getting Started](Getting-Started)**.
 | **Text decorations** | Per-line color, underline, subscript/superscript, italic, bold; combinable |
 | **Text effects** | Canva-style huge/tiny, transparent, shadow, glow, outline, hollow, echo, background, neon, glitch, pixel; mutually exclusive |
 | **Backgrounds** | 6 colour palettes (paper tones, pastels, dark mode, gradient, random) and 8 procedural paper textures |
-| **Augmentation** | 26 methods in one registry, one effect per image, configurable `[min, max]` intensity |
-| **Rust acceleration** | 21/26 augmentation methods plus font glyph checking via a native PyO3 extension, with pure-Python fallback |
+| **Augmentation** | 27 methods in one registry, one effect per image, configurable `[min, max]` intensity |
+| **Rust acceleration** | 21/27 augmentation methods plus font glyph checking via a native PyO3 extension, with pure-Python fallback |
 | **Throughput** | Multiprocess generation with auto worker/chunk sizing |
 | **Storage** | Raw images, LMDB, or both; n-way dataset merging with `combine` |
 | **Text handling** | Khmer normalization, filtering by length, rare-character oversampling, deterministic 3-way splits |
@@ -69,7 +69,7 @@ New here? Start with **[Getting Started](Getting-Started)**.
 | **[Fonts](Fonts)** | Directory layout, script selection, bold/italic variants, coverage checks |
 | **[Variable Line Height](Variable-Line-Height)** | Height modes, proportional font sizing, padding, metadata sidecar |
 | **[Text Decorations and Effects](Text-Decorations-and-Effects)** | All `--text-deco-*` and `--text-effect-*` options |
-| **[Augmentation](Augmentation)** | The 26 methods, selection rules, intensity → physical-unit mapping |
+| **[Augmentation](Augmentation)** | The 27 methods, selection rules, intensity → physical-unit mapping |
 | **[Output and Storage](Output-and-Storage)** | Dataset layout, `labels.txt`, `vocab.json`, `metadata.jsonl`, LMDB, `combine` |
 
 ### Understanding and extending it

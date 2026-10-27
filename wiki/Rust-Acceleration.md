@@ -36,7 +36,7 @@ uv run python -c "from khocr_gen import _rust_accel as ra; print(ra.HAS_RUST_ACC
 
 ## What's accelerated
 
-### Augmentation — 21 of 26 methods
+### Augmentation — 21 of 27 methods
 
 `khocr_gen.augmentation.AUG_METHODS` transparently swaps in the native implementation for each
 method below when `HAS_RUST_ACCEL` is true; otherwise the pure-Python/OpenCV implementation is used.
@@ -54,6 +54,7 @@ method below when `HAS_RUST_ACCEL` is true; otherwise the pure-Python/OpenCV imp
 | `gradient_illumination` | The Rust implementation is grayscale-only, but the renderer may pass RGB arrays through `_RGB_PREFERRED_METHODS`, so it's excluded until an RGB path is added |
 | `extreme_resize` | No native implementation yet |
 | `low_contrast_caption` | No native implementation yet |
+| `luminous_halo` | Colored bloom is Python-only; a grayscale native path would drop the hue |
 
 ### Font glyph checking (`FontFace`)
 

@@ -10,7 +10,7 @@ It renders corpus text with configurable fonts and layouts, applies OCR-oriented
 
 - Mixed Khmer/English rendering with per-span font selection.
 - Variable and bucketed line heights without glyph clipping.
-- Text decorations, visual effects, and 26 augmentation methods.
+- Text decorations, visual effects, and 27 augmentation methods.
 - Khmer text normalization with `khmernormalizer`.
 - Multiprocess generation and deterministic dataset splitting.
 - Optional Rust acceleration through `khocr-gen-core`.

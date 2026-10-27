@@ -207,3 +207,8 @@ morphological-max: 0.4
 anisotropic-dilation-prob: 0.2
 anisotropic-dilation-min: 0.1
 anisotropic-dilation-max: 0.5
+
+# White fill plus a colored bloom. Hue needs color-mode 3.
+luminous-halo-prob: 0.3
+luminous-halo-min: 0.1
+luminous-halo-max: 0.75

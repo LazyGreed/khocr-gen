@@ -106,6 +106,10 @@ def _estimate_bg_per_channel(img: np.ndarray) -> tuple[float, ...]:
     return tuple(float(v) for v in np.median(border, axis=0))
 
 
+# Deviation below this is paper noise, not a glyph. A lower cut would invent ink.
+_HALO_INK_DEV = 28.0
+
+
 # Sauvola
 
 
@@ -872,6 +876,90 @@ def apply_anisotropic_dilation(img: np.ndarray, intensity: float, **kwargs: Any)
     return cv2.dilate(img, kernel, iterations=1)
 
 
+# Luminous halo
+
+
+def apply_luminous_halo(img: np.ndarray, intensity: float, **kwargs: Any) -> np.ndarray:
+    """Soft outer bloom. RGB also gets a near-white glyph fill.
+
+    RGB input (color-mode 3) gets a near-white core and a mostly-green bloom,
+    sometimes cyan or magenta. Grayscale keeps the dark core; a light fringe
+    sits outside it and does not lift the ink. Colored bloom needs color-mode 3.
+    Not in ``_RGB_PREFERRED_METHODS``: that path converts the result back to
+    gray and would drop the hue.
+
+    intensity -> blur sigma and halo opacity. Sigma is also capped so the
+    bloom fades before the canvas edge instead of clipping into a hard rim.
+    """
+    if img.ndim == 2:
+        channels = 1
+    elif img.ndim == 3 and img.shape[2] == 3:
+        channels = 3
+    else:
+        return img
+
+    h, w = img.shape[:2]
+    if h < 3 or w < 3:
+        return img
+
+    bg = _estimate_bg_per_channel(img)
+    img_f = img.astype(np.float32)
+    if channels == 1:
+        deviation = np.abs(img_f - bg[0])
+        bg_lum = bg[0]
+    else:
+        bg_arr = np.asarray(bg, dtype=np.float32)
+        deviation = np.max(np.abs(img_f - bg_arr), axis=2)
+        bg_lum = 0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2]
+
+    ink = deviation > _HALO_INK_DEV
+    ink_count = int(np.count_nonzero(ink))
+    # A page that is mostly ink would be painted blank. Leave the label alone.
+    if ink_count == 0 or ink_count > 0.90 * h * w:
+        return img
+
+    sigma = 0.5 + float(intensity) * 0.10 * float(min(h, w))
+    ys, xs = np.nonzero(ink)
+    y0, y1 = int(ys.min()), int(ys.max())
+    x0, x1 = int(xs.min()), int(xs.max())
+    gap = min(y0, x0, (h - 1) - y1, (w - 1) - x1)
+    sigma = min(sigma, max(0.5, 0.40 * float(gap)))
+
+    halo_alpha = float(np.clip(0.25 + 0.55 * float(intensity), 0.0, 1.0))
+
+    # One draw from ``random`` so a worker seed fixes the hue. Drawn on
+    # grayscale too, so the seed sequence does not depend on channel count.
+    roll = random.random()
+    if roll < 0.72:
+        hue = 60  # green
+    elif roll < 0.86:
+        hue = 90  # cyan
+    else:
+        hue = 150  # magenta
+
+    blurred = cv2.GaussianBlur(
+        ink.astype(np.float32),
+        (0, 0),
+        sigmaX=float(sigma),
+        sigmaY=float(sigma),
+        borderType=cv2.BORDER_CONSTANT,
+    )
+    blurred[ink] = 0.0
+    alpha = blurred * halo_alpha
+
+    if channels == 1:
+        # Near-white fill on a 1-channel light page erases the glyph. Keep the ink.
+        out = img_f * (1.0 - alpha) + 255.0 * alpha
+    else:
+        color = cv2.cvtColor(np.uint8([[[hue, 140, 255]]]), cv2.COLOR_HSV2RGB)[0, 0]
+        alpha3 = alpha[..., np.newaxis]
+        out = img_f * (1.0 - alpha3) + color.astype(np.float32) * alpha3
+        if bg_lum >= 128.0:
+            out[ink] = 250.0
+
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 # Registry
 
 # Methods that produce better results when operating on RGB input rather than grayscale.
@@ -885,7 +973,7 @@ _RGB_PREFERRED_METHODS: frozenset[str] = frozenset(
     }
 )
 
-# Unified registry: all 26 augmentation methods.
+# Unified registry: all 27 augmentation methods.
 AUG_METHODS: dict[str, Any] = {
     # Generator-side (scanner/camera degradation simulation)
     "sauvola": apply_sauvola,
@@ -915,6 +1003,7 @@ AUG_METHODS: dict[str, Any] = {
     "gradient_illumination": apply_gradient_illumination,
     "morphological": apply_morphological,
     "anisotropic_dilation": apply_anisotropic_dilation,
+    "luminous_halo": apply_luminous_halo,
 }
 
 # Replace with Rust-accelerated implementations when available

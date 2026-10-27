@@ -501,6 +501,11 @@ class GenerationConfig:
         default_factory=lambda: AugMethodConfig(prob=0.0, min=0.1, max=0.9)
     )
 
+    # RGB near-white fill + colored bloom (needs color-mode 3). Grayscale keeps the dark core.
+    luminous_halo: AugMethodConfig = field(
+        default_factory=lambda: AugMethodConfig(prob=0.0, min=0.1, max=0.75)
+    )
+
     # Normalizer config
     normalizer: NormalizerConfig = field(default_factory=NormalizerConfig)
 
@@ -611,6 +616,7 @@ class GenerationConfig:
         ("gradient_illumination", "Gradient illumination overlay"),
         ("morphological", "Morphological erode/dilate"),
         ("anisotropic_dilation", "Anisotropic dilation (dot-matrix spread)"),
+        ("luminous_halo", "Luminous halo (RGB near-white fill and colored bloom; grayscale keeps the dark core)"),
     )
 
     # Methods whose config class isn't the generic AugMethodConfig (e.g.

@@ -1,12 +1,12 @@
 # Augmentation
 
-`khocr-gen` provides 26 augmentation methods in a unified registry. Each generated image
+`khocr-gen` provides 27 augmentation methods in a unified registry. Each generated image
 receives **exactly one** augmentation, applied to a clean rendered canvas. Effects are never
 stacked.
 
-21 of the 26 methods run through the native Rust extension when it is available (falling back to
-pure Python/OpenCV otherwise). The five that are not accelerated are `distortion`, `albu_noise`,
-`gradient_illumination`, `extreme_resize`, and `low_contrast_caption` (see
+21 of the 27 methods run through the native Rust extension when it is available (falling back to
+pure Python/OpenCV otherwise). The six that are not accelerated are `distortion`, `albu_noise`,
+`gradient_illumination`, `extreme_resize`, `low_contrast_caption`, and `luminous_halo` (see
 **[Rust Acceleration](Rust-Acceleration)**).
 
 ## How it works
@@ -42,6 +42,7 @@ absolute pixel heights. The method maps the normalized value to physical units:
 | `sauvola` | k value [0.05, 0.50] |
 | `geo_warp` | corner displacement [0.5, 12] px |
 | `lowdpi` | downsample ratio [0.15, 0.80] |
+| `luminous_halo` | blur sigma `0.5 + intensity × 0.10 × min(h, w)` (capped), halo opacity [0.25, 0.80] |
 
 Individual methods' mappings are listed below.
 
@@ -255,6 +256,17 @@ Directional dilation simulating dot-matrix printer spread.
 
 - **Intensity 0.0–0.5 → kernel size 2; 0.5–1.0 → kernel size 3 or 4**
 - Random direction: horizontal or vertical kernel
+
+### `luminous_halo` — Luminous halo
+
+Post-render image effect: a soft outer bloom. On RGB, the glyph core is also filled near-white. Not the render-time `glow`, `neon`, `outline`, or `hollow` strokes (those are hard edges or a same-color halo, and they have no min/max).
+
+- **Intensity → blur sigma** `0.5 + intensity × 0.10 × min(height, width)`, capped at 40% of the gap from the ink box to the image border. The bloom fades out instead of clipping into a hard rim. Canvas size does not change.
+- **Halo opacity** `0.25 + 0.55 × intensity`
+- Hue comes from `random` (the same seed as the rest of generation): mostly green, otherwise cyan or magenta
+- Ink is pixels that deviate from the border background. Counters stay holes. On RGB, the ink mask is painted near-white only when background luminance is at least 128. Darker pages keep the original fill so the line is not inverted. Grayscale keeps the dark core
+- Colored bloom needs `color-mode: 3`. Grayscale gets a light fringe outside the core, not a white fill. The method is not in `_RGB_PREFERRED_METHODS`, because that path converts the result back to gray and would drop the hue
+- Disabled by default (`prob` 0.0, intensity range 0.1–0.75). Python only
 
 ---
 

@@ -208,6 +208,7 @@ Each method has three flags: `--<name>-prob`, `--<name>-min`, `--<name>-max`.
 | `gradient-illumination` | 0.0 | 0.1 | 0.9 | Gradient illumination overlay |
 | `morphological` | 0.0 | 0.1 | 0.9 | Morphological erode/dilate |
 | `anisotropic-dilation` | 0.0 | 0.1 | 0.9 | Anisotropic dilation |
+| `luminous-halo` | 0.0 | 0.1 | 0.75 | Near-white fill with a soft colored bloom (color needs `--color-mode 3`) |
 
 ---
 

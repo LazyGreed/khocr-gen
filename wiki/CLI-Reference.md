@@ -254,6 +254,7 @@ selection weight; the applied intensity is sampled uniformly from `[min, max]`.
 | `gradient-illumination` | 0.0 | 0.1 | 0.9 | Gradient illumination overlay |
 | `morphological` | 0.0 | 0.1 | 0.9 | Morphological erode/dilate |
 | `anisotropic-dilation` | 0.0 | 0.1 | 0.9 | Anisotropic dilation |
+| `luminous-halo` | 0.0 | 0.1 | 0.75 | Near-white fill with a soft colored bloom (color needs `--color-mode 3`) |
 
 Full catalogue with the intensity → physical-unit mapping: **[Augmentation](Augmentation)**.
 
